@@ -65,3 +65,398 @@ body.dark-theme {
 body {
     font-family: var(--font-family-base);
     background-color: var(--bg-color);
+    color: var(--text-color-secondary);
+    line-height: 1.6;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 20px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.container {
+    background-color: var(--container-bg-color);
+    padding: 25px 30px;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    max-width: 500px;
+    transition: background-color 0.3s ease;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 25px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
+    transition: border-color 0.3s ease;
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+header h1 {
+    color: var(--text-color-primary);
+    margin-bottom: 0;
+    font-size: 2em;
+    font-weight: 700;
+}
+
+#theme-toggle {
+    background: var(--theme-toggle-bg);
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    color: var(--text-color-primary);
+}
+#theme-toggle:hover {
+    background: var(--theme-toggle-hover-bg);
+    transform: scale(1.1);
+}
+
+
+header #current-date {
+    font-size: 0.9em;
+    color: var(--text-color-tertiary);
+    margin-bottom: 8px;
+}
+
+header .subtitle {
+    font-size: 1em;
+    color: var(--text-color-secondary);
+}
+
+.task-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-color);
+    transition: border-color 0.3s ease;
+}
+
+.task-item:last-child {
+    border-bottom: none;
+}
+
+.task-item input[type="checkbox"] {
+    margin-right: 15px;
+    margin-top: 7px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--button-primary-bg);
+    flex-shrink: 0;
+    transition: accent-color 0.3s ease;
+}
+
+.task-item textarea {
+    flex-grow: 1;
+    border: none;
+    outline: none;
+    font-size: 1em;
+    font-family: inherit;
+    padding: 8px 5px;
+    background-color: transparent;
+    color: var(--text-color-secondary);
+    resize: none;
+    overflow-y: hidden;
+    line-height: 1.5;
+    min-height: 30px;
+    width: 100%;
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.2s ease;
+}
+
+.task-item textarea:focus {
+    background-color: var(--input-focus-bg);
+    border-radius: 4px;
+    box-shadow: 0 0 0 2px var(--input-focus-shadow);
+}
+
+.task-item.completed textarea {
+    text-decoration: line-through;
+    color: var(--completed-text-color);
+    text-decoration-color: var(--completed-text-color);
+    transition: color 0.3s ease, text-decoration-color 0.3s ease;
+}
+
+#all-done-message {
+    text-align: center;
+    margin-top: 20px;
+    padding: 12px;
+    background-color: var(--all-done-bg);
+    color: var(--all-done-text);
+    border-radius: 6px;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.4s ease, transform 0.4s ease, background-color 0.3s ease, color 0.3s ease;
+}
+#all-done-message:not(.hidden) {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 추가 기능 섹션 */
+.extra-features {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    transition: border-color 0.3s ease;
+}
+
+.stats-section, .share-section {
+    margin-bottom: 25px;
+    padding: 15px;
+    background-color: var(--stats-bg); /* 통계/공유 영역 배경 */
+    border-radius: 6px;
+    transition: background-color 0.3s ease;
+}
+
+.stats-section h3, .share-section h3 {
+    font-size: 1.1em;
+    color: var(--text-color-primary);
+    margin-bottom: 10px;
+}
+
+.stats-section p {
+    font-size: 0.95em;
+    color: var(--text-color-secondary);
+    margin-bottom: 5px;
+}
+
+.share-buttons {
+    display: flex;
+    gap: 10px; /* 버튼 사이 간격 */
+    flex-wrap: wrap; /* 작은 화면에서 줄바꿈 */
+}
+
+.share-buttons button, .share-buttons a {
+    background-color: var(--share-button-bg);
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px; /* 아이콘과 텍스트 간격 */
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.share-buttons button:hover, .share-buttons a:hover {
+    background-color: var(--share-button-hover-bg);
+    transform: translateY(-1px);
+}
+.share-buttons button i, .share-buttons a i {
+    font-size: 1.1em; /* 아이콘 크기 */
+}
+
+
+footer {
+    margin-top: 30px;
+    text-align: center;
+}
+.footer-links {
+    display: flex;
+    justify-content: space-between; /* 양쪽 정렬 */
+    align-items: center;
+    margin-bottom: 15px; /* 기록 섹션과의 간격 */
+}
+
+.support-link {
+    color: var(--link-color);
+    text-decoration: none;
+    font-size: 0.9em;
+    transition: color 0.2s ease;
+}
+.support-link:hover {
+    color: var(--link-hover-color);
+    text-decoration: underline;
+}
+
+
+#toggle-history-btn {
+    background-color: var(--button-primary-bg);
+    color: var(--button-text-color);
+    border: none;
+    padding: 10px 15px; /* 푸터에 맞게 패딩 조절 */
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: background-color 0.2s ease, transform 0.2s ease, color 0.3s ease;
+}
+
+#toggle-history-btn:hover {
+    background-color: var(--button-primary-hover-bg);
+    transform: translateY(-2px);
+}
+#toggle-history-btn:active {
+    transform: translateY(0);
+}
+
+
+#history-section {
+    margin-top: 0; /* footer-links 에서 마진 관리 */
+    background-color: var(--history-bg);
+    border-radius: 6px;
+    border: 1px solid var(--history-border);
+    max-height: 0;
+    overflow: hidden;
+    padding-top: 0;
+    padding-bottom: 0;
+    transition: max-height 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), 
+                padding-top 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), 
+                padding-bottom 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
+                background-color 0.3s ease, border-color 0.3s ease;
+}
+#history-section:not(.hidden) {
+    max-height: 600px;
+    padding: 20px;
+}
+
+#history-section h2 {
+    font-size: 1.2em;
+    color: var(--text-color-primary);
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.history-entry {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px dashed var(--border-color);
+    transition: border-color 0.3s ease;
+}
+.history-entry:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.history-entry strong {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-color-secondary);
+    font-weight: 500;
+}
+.history-entry ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+.history-entry ul li {
+    color: var(--text-color-tertiary);
+    padding-left: 20px;
+    position: relative;
+}
+.history-entry ul li::before {
+    content: '•';
+    color: var(--button-primary-bg);
+    position: absolute;
+    left: 0;
+    font-size: 1.2em;
+    line-height: 1;
+    transition: color 0.3s ease;
+}
+
+.history-entry ul li.completed {
+    text-decoration: line-through;
+    color: var(--completed-text-color);
+    transition: color 0.3s ease;
+}
+.history-entry ul li.completed::before {
+    color: var(--completed-text-color);
+}
+
+
+.hidden {
+    display: none;
+}
+
+/* 모바일 반응형 스타일 */
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+    .container {
+        padding: 20px 15px;
+    }
+    header h1 {
+        font-size: 1.7em;
+    }
+    #theme-toggle {
+        font-size: 1.3em;
+        width: 36px;
+        height: 36px;
+    }
+    header #current-date {
+        font-size: 0.85em;
+    }
+    header .subtitle {
+        font-size: 0.9em;
+    }
+    .task-item {
+        padding: 12px 0;
+    }
+    .task-item input[type="checkbox"] {
+        margin-right: 10px;
+        width: 18px;
+        height: 18px;
+        margin-top: 6px;
+    }
+    .task-item textarea {
+        font-size: 0.95em;
+        min-height: 28px;
+    }
+    #all-done-message {
+        padding: 10px;
+        font-size: 0.9em;
+    }
+
+    .stats-section, .share-section {
+        padding: 10px;
+    }
+    .stats-section h3, .share-section h3 {
+        font-size: 1em;
+    }
+    .stats-section p {
+        font-size: 0.9em;
+    }
+    .share-buttons button, .share-buttons a {
+        padding: 7px 10px;
+        font-size: 0.85em;
+    }
+
+    .footer-links {
+        flex-direction: column; /* 작은 화면에서 세로 정렬 */
+        gap: 10px;
+    }
+    .support-link {
+        order: 2; /* 후원 링크를 아래로 */
+    }
+    #toggle-history-btn {
+        order: 1; /* 기록 보기 버튼을 위로 */
+        padding: 10px 15px;
+        font-size: 0.9em;
+    }
+    #history-section:not(.hidden) {
+        padding: 15px;
+    }
+    #history-section h2 {
+        font-size: 1.1em;
+    }
+}
