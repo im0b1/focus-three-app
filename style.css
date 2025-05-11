@@ -1,173 +1,282 @@
-/* 기본 스타일 초기화 */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+document.addEventListener('DOMContentLoaded', () => {
+    const taskListDiv = document.querySelector('.task-list');
+    const currentDateEl = document.getElementById('current-date');
+    const allDoneMessageEl = document.getElementById('all-done-message');
+    const toggleHistoryBtn = document.getElementById('toggle-history-btn');
+    const historySection = document.getElementById('history-section');
+    const historyListDiv = document.getElementById('history-list');
+    const themeToggleButton = document.getElementById('theme-toggle');
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    background-color: #f4f7f6;
-    color: #333;
-    line-height: 1.6;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start; /* 상단 정렬 */
-    min-height: 100vh;
-    padding: 20px;
-}
+    // 통계 요소
+    const weeklyStatsEl = document.getElementById('weekly-stats');
+    const monthlyStatsEl = document.getElementById('monthly-stats');
 
-.container {
-    background-color: #fff;
-    padding: 25px 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 500px;
-}
+    // 공유 버튼 요소
+    const copyLinkBtn = document.getElementById('copy-link-btn');
+    const shareTwitterBtn = document.getElementById('share-twitter-btn');
+    // const shareInstagramBtn = document.getElementById('share-instagram-btn'); // 인스타 직접 공유는 어려움
 
-header {
-    text-align: center;
-    margin-bottom: 25px;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 15px;
-}
+    const MAX_TASKS = 3;
+    let tasks = [];
+    let history = []; // { date: "YYYY-MM-DD", tasks: [{text:"", completed:true}, ...] }
 
-header h1 {
-    color: #2c3e50;
-    margin-bottom: 5px;
-}
+    // --- 테마 관리 ---
+    function applyTheme(theme) {
+        if (theme === 'dark') {
+            document.body.classList.add('dark-theme');
+            themeToggleButton.textContent = '☀️';
+            localStorage.setItem('focusThreeTheme', 'dark');
+        } else {
+            document.body.classList.remove('dark-theme');
+            themeToggleButton.textContent = '🌙';
+            localStorage.setItem('focusThreeTheme', 'light');
+        }
+    }
+    themeToggleButton.addEventListener('click', () => {
+        const currentTheme = localStorage.getItem('focusThreeTheme') || 'light';
+        applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+    });
+    const savedTheme = localStorage.getItem('focusThreeTheme');
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    }
 
-header #current-date {
-    font-size: 0.9em;
-    color: #7f8c8d;
-    margin-bottom: 8px;
-}
+    // --- 날짜 및 기본 유틸리티 ---
+    function getTodayDateString() {
+        const today = new Date();
+        return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
 
-header .subtitle {
-    font-size: 1em;
-    color: #34495e;
-}
+    function displayCurrentDate() {
+        const today = new Date();
+        const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+        currentDateEl.textContent = today.toLocaleDateString('ko-KR', options);
+    }
 
-.task-item {
-    display: flex;
-    align-items: flex-start; /* 체크박스와 textarea 상단 정렬을 위해 flex-start */
-    padding: 12px 0;
-    border-bottom: 1px solid #ecf0f1;
-}
+    function autoGrowTextarea(element) {
+        element.style.height = "auto";
+        element.style.height = (element.scrollHeight) + "px";
+    }
 
-.task-item:last-child {
-    border-bottom: none;
-}
+    // --- 상태 저장 및 로드 ---
+    function saveState() {
+        localStorage.setItem('focusThreeTasks', JSON.stringify(tasks));
+        localStorage.setItem('focusThreeLastDate', getTodayDateString());
+        localStorage.setItem('focusThreeHistory', JSON.stringify(history));
+        updateStats(); // 상태 변경 시 통계 업데이트
+    }
 
-.task-item input[type="checkbox"] {
-    margin-right: 12px;
-    margin-top: 5px; /* textarea와 수직 정렬을 위해 약간의 상단 마진 */
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: #3498db; /* 체크 시 색상 */
-    flex-shrink: 0; /* 체크박스 크기 고정 */
-}
+    function loadState() {
+        const storedTasks = localStorage.getItem('focusThreeTasks');
+        const storedLastDate = localStorage.getItem('focusThreeLastDate');
+        const storedHistory = localStorage.getItem('focusThreeHistory');
+        const todayDateStr = getTodayDateString();
 
-/* input[type="text"] 스타일을 textarea로 변경 */
-.task-item textarea {
-    flex-grow: 1;
-    border: none;
-    outline: none;
-    font-size: 1em;
-    font-family: inherit; /* body의 font-family 상속 */
-    padding: 5px;
-    background-color: transparent;
-    resize: none; /* 사용자가 크기 조절 못하게 */
-    overflow-y: hidden; /* 초기 스크롤바 숨김 (JS로 높이 조절) */
-    line-height: 1.5; /* 줄 간격 조절 */
-    min-height: 26px; /* 최소 높이 (한 줄 입력 시 input과 비슷하게) */
-    /* max-height: 100px; */ /* 필요하다면 최대 높이 제한 */
-    width: 100%; /* 너비 채우기 */
-}
+        if (storedHistory) {
+            try {
+                history = JSON.parse(storedHistory);
+                if (!Array.isArray(history)) history = [];
+            } catch (e) { history = []; }
+        }
 
-.task-item textarea:focus {
-    background-color: #f8f9fa;
-    border-radius: 4px;
-}
+        if (storedLastDate === todayDateStr && storedTasks) {
+            try {
+                tasks = JSON.parse(storedTasks);
+                if (!Array.isArray(tasks)) initializeTasks();
+            } catch (e) { initializeTasks(); }
+        } else {
+            if (storedTasks && storedLastDate) { // 어제 날짜가 있어야 기록으로 넘김
+                try {
+                    const yesterdayTasksData = JSON.parse(storedTasks);
+                    if(Array.isArray(yesterdayTasksData)) {
+                        // 어제 날짜의 '모든 할 일'이 완료되었는지 체크
+                        const allYesterdayTasksFilled = yesterdayTasksData.every(task => task && typeof task.text === 'string' && task.text.trim() !== "");
+                        const allYesterdayTasksCompleted = yesterdayTasksData.every(task => task && task.completed);
+                        
+                        // '목표 달성 여부'를 기록 (3가지 모두 채우고 모두 완료했는지)
+                        const yesterdayAchieved = allYesterdayTasksFilled && yesterdayTasksData.length === MAX_TASKS && allYesterdayTasksCompleted;
 
-.task-item.completed textarea {
-    text-decoration: line-through;
-    color: #95a5a6;
-}
+                        // 기록 객체에 'achieved' 속성 추가
+                        history.unshift({ date: storedLastDate, tasks: yesterdayTasksData, achieved: yesterdayAchieved });
+                        if (history.length > 60) history.splice(60); // 통계를 위해 기록 보관 기간 늘림 (예: 60일)
+                    }
+                } catch (e) { console.error("Error processing yesterday's tasks for history", e); }
+            }
+            initializeTasks();
+            // saveState(); // initializeTasks 후 바로 저장 불필요, renderTasks 후 사용자가 입력/변경 시 저장됨
+        }
+        
+        while(tasks.length < MAX_TASKS) {
+            tasks.push({ id: Date.now() + tasks.length, text: '', completed: false });
+        }
+        if(tasks.length > MAX_TASKS) {
+            tasks = tasks.slice(0, MAX_TASKS);
+        }
+        updateStats(); // 초기 로드 시 통계 업데이트
+    }
 
-#all-done-message {
-    text-align: center;
-    margin-top: 20px;
-    padding: 10px;
-    background-color: #e8f5e9;
-    color: #2e7d32;
-    border-radius: 4px;
-    font-weight: bold;
-}
+    function initializeTasks() {
+        tasks = [];
+        for (let i = 0; i < MAX_TASKS; i++) {
+            tasks.push({ id: Date.now() + i, text: '', completed: false });
+        }
+    }
 
-footer {
-    margin-top: 30px;
-    text-align: center;
-}
+    // --- 할 일 렌더링 및 관리 ---
+    function renderTasks() {
+        taskListDiv.innerHTML = '';
+        tasks.forEach((task, index) => {
+            const taskItem = document.createElement('div');
+            taskItem.classList.add('task-item');
+            if (task.completed) {
+                taskItem.classList.add('completed');
+            }
 
-#toggle-history-btn {
-    background-color: #3498db;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9em;
-    transition: background-color 0.3s ease;
-}
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = task.completed;
+            checkbox.setAttribute('aria-label', `할 일 ${index + 1} 완료`);
+            checkbox.addEventListener('change', () => {
+                tasks[index].completed = checkbox.checked;
+                taskItem.classList.toggle('completed', checkbox.checked);
+                checkAllDone();
+                saveState();
+            });
 
-#toggle-history-btn:hover {
-    background-color: #2980b9;
-}
+            const textareaField = document.createElement('textarea');
+            textareaField.rows = "1";
+            textareaField.placeholder = `할 일 ${index + 1}`;
+            textareaField.value = task.text;
+            textareaField.setAttribute('aria-label', `할 일 ${index + 1} 내용`);
+            
+            textareaField.addEventListener('input', (e) => {
+                tasks[index].text = e.target.value;
+                autoGrowTextarea(e.target);
+            });
+            textareaField.addEventListener('blur', () => {
+                saveState();
+            });
+            textareaField.addEventListener('focus', (e) => {
+                autoGrowTextarea(e.target);
+            });
 
-#history-section {
-    margin-top: 20px;
-    padding: 15px;
-    background-color: #f9f9f9;
-    border-radius: 4px;
-    border: 1px solid #eee;
-}
+            taskItem.appendChild(checkbox);
+            taskItem.appendChild(textareaField);
+            taskListDiv.appendChild(taskItem);
+            autoGrowTextarea(textareaField);
+        });
+        checkAllDone();
+    }
 
-#history-section h2 {
-    font-size: 1.1em;
-    color: #34495e;
-    margin-bottom: 10px;
-    text-align: left;
-}
+    function checkAllDone() {
+        const filledTasks = tasks.filter(task => typeof task.text === 'string' && task.text.trim() !== "");
+        const completedFilledTasks = filledTasks.filter(task => task.completed);
 
-.history-entry {
-    margin-bottom: 10px;
-    padding-bottom: 10px;
-    border-bottom: 1px dashed #ddd;
-}
-.history-entry:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-}
+        if (filledTasks.length === MAX_TASKS && completedFilledTasks.length === MAX_TASKS) {
+            allDoneMessageEl.classList.remove('hidden');
+        } else {
+            allDoneMessageEl.classList.add('hidden');
+        }
+    }
 
-.history-entry strong {
-    display: block;
-    margin-bottom: 5px;
-    color: #555;
-}
-.history-entry ul {
-    list-style-type: disc;
-    margin-left: 20px;
-    color: #777;
-}
-.history-entry ul li.completed {
-    text-decoration: line-through;
-    color: #aaa;
-}
+    // --- 지난 기록 렌더링 ---
+    function renderHistory() {
+        if (history.length === 0) {
+            historyListDiv.innerHTML = '<p>지난 기록이 없습니다.</p>';
+            return;
+        }
+        historyListDiv.innerHTML = '';
+        history.forEach(entry => {
+            if (!entry || !entry.date || !Array.isArray(entry.tasks)) return;
 
-.hidden {
-    display: none;
-}
+            const entryDiv = document.createElement('div');
+            entryDiv.classList.add('history-entry');
+             // 목표 달성 여부에 따라 시각적 표시 (선택 사항)
+            if (entry.achieved) {
+                entryDiv.style.borderLeft = "3px solid var(--all-done-text)"; // 예시
+            }
+
+
+            const dateStrong = document.createElement('strong');
+            dateStrong.textContent = `${entry.date.replaceAll('-', '.')}. ${entry.achieved ? "🎯" : ""}`; // 달성 시 아이콘 추가
+            entryDiv.appendChild(dateStrong);
+
+            const ul = document.createElement('ul');
+            entry.tasks.forEach(task => {
+                if(!task || typeof task.text !== 'string') return;
+                const li = document.createElement('li');
+                li.textContent = task.text;
+                if (task.completed) {
+                    li.classList.add('completed');
+                }
+                ul.appendChild(li);
+            });
+            entryDiv.appendChild(ul);
+            historyListDiv.appendChild(entryDiv);
+        });
+    }
+    toggleHistoryBtn.addEventListener('click', () => {
+        const isHidden = historySection.classList.toggle('hidden');
+        toggleHistoryBtn.textContent = isHidden ? "지난 기록 보기" : "지난 기록 숨기기";
+        if (!isHidden) {
+            renderHistory();
+        }
+    });
+
+    // --- 통계 계산 및 업데이트 ---
+    function calculateAchievementRate(days) {
+        if (history.length === 0) return "0% (기록 없음)";
+
+        const today = new Date();
+        let achievementCount = 0;
+        let relevantDaysCount = 0;
+
+        for (let i = 0; i < days; i++) {
+            const targetDate = new Date(today);
+            targetDate.setDate(today.getDate() - i);
+            const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+            
+            const entry = history.find(h => h.date === targetDateStr);
+            if (entry) {
+                relevantDaysCount++;
+                if (entry.achieved) { // 'achieved' 속성으로 판단
+                    achievementCount++;
+                }
+            }
+        }
+        
+        if (relevantDaysCount === 0) return "0% (기간 내 기록 없음)";
+        const rate = (achievementCount / relevantDaysCount) * 100;
+        return `${rate.toFixed(0)}% (${achievementCount}/${relevantDaysCount}일)`;
+    }
+
+    function updateStats() {
+        weeklyStatsEl.textContent = `지난 7일간 달성률: ${calculateAchievementRate(7)}`;
+        monthlyStatsEl.textContent = `지난 30일간 달성률: ${calculateAchievementRate(30)}`;
+    }
+
+
+    // --- 공유 기능 ---
+    const shareUrl = window.location.href; // 현재 페이지 URL
+    const shareText = "오늘 가장 중요한 3가지 일에 집중하세요! FocusThree와 함께! ✨";
+
+    copyLinkBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            alert('링크가 복사되었습니다!');
+        }).catch(err => {
+            console.error('링크 복사 실패:', err);
+            alert('링크 복사에 실패했습니다.');
+        });
+    });
+
+    shareTwitterBtn.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+    // 인스타그램은 직접 텍스트/링크 공유가 어려워, 앱 소개 페이지 링크나 해시태그 사용 유도로 대체.
+    // shareInstagramBtn.href = `...`; 
+
+
+    // --- 초기화 ---
+    displayCurrentDate();
+    loadState(); // 통계 계산을 위해 기록 먼저 로드
+    renderTasks();
+    // updateStats(); // loadState에서 호출됨
+});
