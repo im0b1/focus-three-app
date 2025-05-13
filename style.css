@@ -5,458 +5,171 @@
     box-sizing: border-box;
 }
 
-/* CSS 변수 (테마 관리용) */
+/* CSS 변수 */
 :root {
     --font-family-base: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     
-    /* 라이트 테마 (기본) */
-    --bg-color: #f4f7f6;
-    --container-bg-color: #ffffff;
-    --text-color-primary: #2c3e50;
-    --text-color-secondary: #34495e;
-    --text-color-tertiary: #7f8c8d;
-    --border-color: #ecf0f1;
-    --input-focus-bg: #f8f9fa;
-    --input-focus-shadow: rgba(52, 152, 219, 0.25);
-    --completed-text-color: #95a5a6;
-    --button-primary-bg: #3498db;
-    --button-primary-hover-bg: #2980b9;
-    --button-text-color: #ffffff;
-    --all-done-bg: #e8f5e9;
-    --all-done-text: #2e7d32;
-    --history-bg: #f9f9f9;
-    --history-border: #eee;
-    --theme-toggle-bg: transparent;
-    --theme-toggle-hover-bg: rgba(0,0,0,0.05);
-    --link-color: #3498db;
-    --link-hover-color: #2980b9;
-    --stats-bg: #f8f9fa; /* 통계 섹션 배경 */
-    --share-button-bg: #555;
-    --share-button-hover-bg: #333;
-}
-
-body.dark-theme {
+    /* 라이트 테마 */
+    --bg-color-light: #f4f7f6; --container-bg-color-light: #ffffff; --text-color-primary-light: #2c3e50; --text-color-secondary-light: #34495e; --text-color-tertiary-light: #7f8c8d; --border-color-light: #ecf0f1; --input-focus-bg-light: #f8f9fa; --input-focus-shadow-light: rgba(52, 152, 219, 0.25); --completed-text-color-light: #95a5a6; --button-primary-bg-light: #3498db; --button-primary-hover-bg-light: #2980b9; --button-secondary-bg-light: #e9ecef; --button-secondary-hover-bg-light: #dee2e6; --button-secondary-text-light: #495057; --button-text-color-light: #ffffff; --all-done-bg-light: #e8f5e9; --all-done-text-light: #2e7d32; --section-bg-light: #f9f9f9; --section-border-light: #eee; --theme-toggle-bg-light: transparent; --theme-toggle-hover-bg-light: rgba(0,0,0,0.05); --link-color-light: #3498db; --link-hover-color-light: #2980b9; --stats-content-bg-light: #f0f3f2; --share-content-bg-light: #f0f3f2; --share-button-bg-light: #555; --share-button-hover-bg-light: #333;
     /* 다크 테마 */
-    --bg-color: #212529;
-    --container-bg-color: #2c3034;
-    --text-color-primary: #e9ecef;
-    --text-color-secondary: #ced4da;
-    --text-color-tertiary: #adb5bd;
-    --border-color: #495057;
-    --input-focus-bg: #3e444a;
-    --input-focus-shadow: rgba(13, 110, 253, 0.35);
-    --completed-text-color: #6c757d;
-    --button-primary-bg: #5dade2;
-    --button-primary-hover-bg: #4a90e2;
-    --button-text-color: #212529;
-    --all-done-bg: #2a3b2c;
-    --all-done-text: #a5d6a7;
-    --history-bg: #343a40;
-    --history-border: #495057;
-    --theme-toggle-hover-bg: rgba(255,255,255,0.1);
-    --link-color: #5dade2;
-    --link-hover-color: #8ecae6;
-    --stats-bg: #343a40; /* 통계 섹션 배경 (다크) */
-    --share-button-bg: #777;
-    --share-button-hover-bg: #999;
+    --bg-color-dark: #212529; --container-bg-color-dark: #2c3034; --text-color-primary-dark: #e9ecef; --text-color-secondary-dark: #ced4da; --text-color-tertiary-dark: #adb5bd; --border-color-dark: #495057; --input-focus-bg-dark: #3e444a; --input-focus-shadow-dark: rgba(13, 110, 253, 0.35); --completed-text-color-dark: #6c757d; --button-primary-bg-dark: #5dade2; --button-primary-hover-bg-dark: #4a90e2; --button-secondary-bg-dark: #495057; --button-secondary-hover-bg-dark: #5a6268; --button-secondary-text-dark: #e9ecef; --button-text-color-dark: #212529; --all-done-bg-dark: #2a3b2c; --all-done-text-dark: #a5d6a7; --section-bg-dark: #343a40; --section-border-dark: #495057; --theme-toggle-hover-bg-dark: rgba(255,255,255,0.1); --link-color-dark: #5dade2; --link-hover-color-dark: #8ecae6; --stats-content-bg-dark: #3b4148; --share-content-bg-dark: #3b4148; --share-button-bg-dark: #777; --share-button-hover-bg-dark: #999;
+    /* 기본값 설정 */
+    --bg-color: var(--bg-color-light); --container-bg-color: var(--container-bg-color-light); --text-color-primary: var(--text-color-primary-light); --text-color-secondary: var(--text-color-secondary-light); --text-color-tertiary: var(--text-color-tertiary-light); --border-color: var(--border-color-light); --input-focus-bg: var(--input-focus-bg-light); --input-focus-shadow: var(--input-focus-shadow-light); --completed-text-color: var(--completed-text-color-light); --button-primary-bg: var(--button-primary-bg-light); --button-primary-hover-bg: var(--button-primary-hover-bg-light); --button-secondary-bg: var(--button-secondary-bg-light); --button-secondary-hover-bg: var(--button-secondary-hover-bg-light); --button-secondary-text: var(--button-secondary-text-light); --button-text-color: var(--button-text-color-light); --all-done-bg: var(--all-done-bg-light); --all-done-text: var(--all-done-text-light); --section-bg: var(--section-bg-light); --section-border: var(--section-border-light); --theme-toggle-bg: transparent; --theme-toggle-hover-bg: var(--theme-toggle-hover-bg-light); --link-color: var(--link-color-light); --link-hover-color: var(--link-hover-color-light); --stats-content-bg: var(--stats-content-bg-light); --share-content-bg: var(--share-content-bg-light); --share-button-bg: var(--share-button-bg-light); --share-button-hover-bg: var(--share-button-hover-bg-light);
+}
+body.dark-theme {
+    /* 다크 테마 덮어쓰기 */
+    --bg-color: var(--bg-color-dark); --container-bg-color: var(--container-bg-color-dark); --text-color-primary: var(--text-color-primary-dark); --text-color-secondary: var(--text-color-secondary-dark); --text-color-tertiary: var(--text-color-tertiary-dark); --border-color: var(--border-color-dark); --input-focus-bg: var(--input-focus-bg-dark); --input-focus-shadow: var(--input-focus-shadow-dark); --completed-text-color: var(--completed-text-color-dark); --button-primary-bg: var(--button-primary-bg-dark); --button-primary-hover-bg: var(--button-primary-hover-bg-dark); --button-secondary-bg: var(--button-secondary-bg-dark); --button-secondary-hover-bg: var(--button-secondary-hover-bg-dark); --button-secondary-text: var(--button-secondary-text-dark); --button-text-color: var(--button-text-color-dark); --all-done-bg: var(--all-done-bg-dark); --all-done-text: var(--all-done-text-dark); --section-bg: var(--section-bg-dark); --section-border: var(--section-border-dark); --theme-toggle-hover-bg: var(--theme-toggle-hover-bg-dark); --link-color: var(--link-color-dark); --link-hover-color: var(--link-hover-color-dark); --stats-content-bg: var(--stats-content-bg-dark); --share-content-bg: var(--share-content-bg-dark); --share-button-bg: var(--share-button-bg-dark); --share-button-hover-bg: var(--share-button-hover-bg-dark);
 }
 
-
+/* --- 기본 레이아웃 --- */
 body {
-    font-family: var(--font-family-base);
-    background-color: var(--bg-color);
-    color: var(--text-color-secondary);
-    line-height: 1.6;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    min-height: 100vh;
-    padding: 20px;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    font-family: var(--font-family-base); background-color: var(--bg-color); color: var(--text-color-secondary);
+    line-height: 1.6; display: flex; justify-content: center; align-items: flex-start;
+    min-height: 100vh; padding: 20px; transition: background-color 0.3s ease, color 0.3s ease;
 }
-
 .container {
-    background-color: var(--container-bg-color);
-    padding: 25px 30px;
-    border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-    width: 100%;
-    max-width: 500px;
+    background-color: var(--container-bg-color); padding: 25px 30px; border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); width: 100%; max-width: 500px;
     transition: background-color 0.3s ease;
 }
-
 header {
-    text-align: center;
-    margin-bottom: 25px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 15px;
-    transition: border-color 0.3s ease;
+    text-align: center; margin-bottom: 30px; padding-bottom: 10px;
+    /* border-bottom 제거는 유지 */
 }
-
-.header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
-}
-
-header h1 {
-    color: var(--text-color-primary);
-    margin-bottom: 0;
-    font-size: 2em;
-    font-weight: 700;
-}
-
+.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+header h1 { color: var(--text-color-primary); margin-bottom: 0; font-size: 2em; font-weight: 700; }
 #theme-toggle {
-    background: var(--theme-toggle-bg);
-    border: none;
-    font-size: 1.5em;
-    cursor: pointer;
-    padding: 5px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    transition: background-color 0.2s ease, transform 0.2s ease;
-    color: var(--text-color-primary);
+    background: var(--theme-toggle-bg); border: none; font-size: 1.5em; cursor: pointer; padding: 5px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+    transition: background-color 0.2s ease, transform 0.2s ease; color: var(--text-color-primary);
 }
-#theme-toggle:hover {
-    background: var(--theme-toggle-hover-bg);
-    transform: scale(1.1);
-}
+#theme-toggle:hover { background: var(--theme-toggle-hover-bg); transform: scale(1.1); }
+#theme-toggle:focus-visible { outline: 2px solid var(--button-primary-bg); outline-offset: 2px; }
+header #current-date { font-size: 0.9em; color: var(--text-color-tertiary); margin-bottom: 8px; }
+header .subtitle { font-size: 1em; color: var(--text-color-secondary); }
+main { margin-bottom: 30px; }
 
-
-header #current-date {
-    font-size: 0.9em;
-    color: var(--text-color-tertiary);
-    margin-bottom: 8px;
-}
-
-header .subtitle {
-    font-size: 1em;
-    color: var(--text-color-secondary);
-}
-
+/* --- 할 일 목록 스타일 --- */ /* <--- 주석 수정 */
+.task-list { }
 .task-item {
-    display: flex;
-    align-items: flex-start;
-    padding: 15px 0;
-    border-bottom: 1px solid var(--border-color);
-    transition: border-color 0.3s ease;
+    display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 10px; padding: 12px 0;
+    border-bottom: 1px solid var(--border-color); /* <--- 구분선 추가 */
+    transition: border-color 0.3s ease; /* 테마 변경 시 구분선 색상 부드럽게 변경 */
 }
-
 .task-item:last-child {
-    border-bottom: none;
+    border-bottom: none; /* <--- 마지막 항목에는 구분선 제거 */
 }
-
 .task-item input[type="checkbox"] {
-    margin-right: 15px;
-    margin-top: 7px;
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    accent-color: var(--button-primary-bg);
-    flex-shrink: 0;
-    transition: accent-color 0.3s ease;
+    margin-top: 6px; width: 20px; height: 20px; cursor: pointer;
+    accent-color: var(--button-primary-bg); transition: accent-color 0.3s ease;
 }
-
+.task-item input[type="checkbox"]:focus-visible { outline: 2px solid var(--button-primary-bg); outline-offset: 2px; }
 .task-item textarea {
-    flex-grow: 1;
-    border: none;
-    outline: none;
-    font-size: 1em;
-    font-family: inherit;
-    padding: 8px 5px;
-    background-color: transparent;
-    color: var(--text-color-secondary);
-    resize: none;
-    overflow-y: hidden;
-    line-height: 1.5;
-    min-height: 30px;
-    width: 100%;
-    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.2s ease;
+    border: none; outline: none; font-size: 1em; font-family: inherit; padding: 8px 5px;
+    background-color: transparent; color: var(--text-color-secondary); resize: none;
+    overflow-y: hidden; line-height: 1.5; min-height: 30px; width: 100%;
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.2s ease; border-radius: 4px;
 }
-
-.task-item textarea:focus {
-    background-color: var(--input-focus-bg);
-    border-radius: 4px;
-    box-shadow: 0 0 0 2px var(--input-focus-shadow);
-}
-
+.task-item textarea:focus { background-color: var(--input-focus-bg); box-shadow: 0 0 0 2px var(--input-focus-shadow); }
 .task-item.completed textarea {
-    text-decoration: line-through;
-    color: var(--completed-text-color);
-    text-decoration-color: var(--completed-text-color);
+    text-decoration: line-through; color: var(--completed-text-color); text-decoration-color: var(--completed-text-color);
     transition: color 0.3s ease, text-decoration-color 0.3s ease;
 }
-
 #all-done-message {
-    text-align: center;
-    margin-top: 20px;
-    padding: 12px;
-    background-color: var(--all-done-bg);
-    color: var(--all-done-text);
-    border-radius: 6px;
-    font-weight: 500;
-    opacity: 0;
-    transform: translateY(10px);
+    text-align: center; margin-top: 25px; padding: 12px; background-color: var(--all-done-bg);
+    color: var(--all-done-text); border-radius: 6px; font-weight: 500; opacity: 0; transform: translateY(10px);
     transition: opacity 0.4s ease, transform 0.4s ease, background-color 0.3s ease, color 0.3s ease;
 }
-#all-done-message:not(.hidden) {
-    opacity: 1;
-    transform: translateY(0);
-}
+#all-done-message:not(.hidden) { opacity: 1; transform: translateY(0); }
 
-/* 추가 기능 섹션 */
-.extra-features {
-    margin-top: 30px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border-color);
-    transition: border-color 0.3s ease;
+/* --- Footer 및 토글 섹션 --- */
+footer { margin-top: 0; padding-top: 20px; /* border-top 제거는 유지 */ }
+.footer-toggles { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+#toggle-history-btn, #toggle-stats-btn, #toggle-share-btn {
+    background-color: var(--button-secondary-bg); color: var(--button-secondary-text);
+    border: 1px solid var(--border-color); padding: 9px 14px; border-radius: 6px;
+    cursor: pointer; font-size: 0.9em; font-weight: 500;
+    transition: background-color 0.2s ease, transform 0.2s ease, color 0.3s ease, border-color 0.3s ease;
 }
+#toggle-history-btn:hover, #toggle-stats-btn:hover, #toggle-share-btn:hover { background-color: var(--button-secondary-hover-bg); transform: translateY(-2px); }
+#toggle-history-btn:active, #toggle-stats-btn:active, #toggle-share-btn:active { transform: translateY(0); }
+#toggle-history-btn:focus-visible, #toggle-stats-btn:focus-visible, #toggle-share-btn:focus-visible { outline: 2px solid var(--button-primary-bg); outline-offset: 1px; }
+.footer-support { text-align: center; margin-bottom: 15px; }
+.support-link { color: var(--link-color); text-decoration: none; font-size: 0.9em; transition: color 0.2s ease; }
+.support-link:hover { color: var(--link-hover-color); text-decoration: underline; }
+.support-link:focus-visible { outline: 2px solid var(--link-color); border-radius: 2px; }
 
-.stats-section, .share-section {
-    margin-bottom: 25px;
-    padding: 15px;
-    background-color: var(--stats-bg); /* 통계/공유 영역 배경 */
-    border-radius: 6px;
-    transition: background-color 0.3s ease;
-}
-
-.stats-section h3, .share-section h3 {
-    font-size: 1.1em;
-    color: var(--text-color-primary);
-    margin-bottom: 10px;
-}
-
-.stats-section p {
-    font-size: 0.95em;
-    color: var(--text-color-secondary);
-    margin-bottom: 5px;
-}
-
-.share-buttons {
-    display: flex;
-    gap: 10px; /* 버튼 사이 간격 */
-    flex-wrap: wrap; /* 작은 화면에서 줄바꿈 */
-}
-
-.share-buttons button, .share-buttons a {
-    background-color: var(--share-button-bg);
-    color: #fff;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9em;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px; /* 아이콘과 텍스트 간격 */
-    transition: background-color 0.2s ease, transform 0.2s ease;
-}
-.share-buttons button:hover, .share-buttons a:hover {
-    background-color: var(--share-button-hover-bg);
-    transform: translateY(-1px);
-}
-.share-buttons button i, .share-buttons a i {
-    font-size: 1.1em; /* 아이콘 크기 */
-}
-
-
-footer {
-    margin-top: 30px;
-    text-align: center;
-}
-.footer-links {
-    display: flex;
-    justify-content: space-between; /* 양쪽 정렬 */
-    align-items: center;
-    margin-bottom: 15px; /* 기록 섹션과의 간격 */
-}
-
-.support-link {
-    color: var(--link-color);
-    text-decoration: none;
-    font-size: 0.9em;
-    transition: color 0.2s ease;
-}
-.support-link:hover {
-    color: var(--link-hover-color);
-    text-decoration: underline;
-}
-
-
-#toggle-history-btn {
-    background-color: var(--button-primary-bg);
-    color: var(--button-text-color);
-    border: none;
-    padding: 10px 15px; /* 푸터에 맞게 패딩 조절 */
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.9em;
-    font-weight: 500;
-    transition: background-color 0.2s ease, transform 0.2s ease, color 0.3s ease;
-}
-
-#toggle-history-btn:hover {
-    background-color: var(--button-primary-hover-bg);
-    transform: translateY(-2px);
-}
-#toggle-history-btn:active {
-    transform: translateY(0);
-}
-
-
-#history-section {
-    margin-top: 0; /* footer-links 에서 마진 관리 */
-    background-color: var(--history-bg);
-    border-radius: 6px;
-    border: 1px solid var(--history-border);
-    max-height: 0;
-    overflow: hidden;
-    padding-top: 0;
-    padding-bottom: 0;
-    transition: max-height 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), 
-                padding-top 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), 
+/* 토글 섹션 공통 스타일 (History, Stats, Share) - border와 margin-top 수정 */
+.toggle-section {
+    background-color: var(--section-bg); border-radius: 8px; border: none; /* 테두리 없음 */
+    max-height: 0; overflow: hidden; margin-top: 0; /* 접힌 상태 마진 없음 */
+    padding-left: 20px; padding-right: 20px; padding-top: 0; padding-bottom: 0;
+    transition: max-height 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
+                padding-top 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
                 padding-bottom 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
-                background-color 0.3s ease, border-color 0.3s ease;
+                margin-top 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
+                background-color 0.3s ease;
 }
-#history-section:not(.hidden) {
-    max-height: 600px;
-    padding: 20px;
-}
-
-#history-section h2 {
-    font-size: 1.2em;
-    color: var(--text-color-primary);
-    margin-bottom: 15px;
-    text-align: left;
+.toggle-section:not(.hidden) {
+    max-height: 800px; padding-top: 20px; padding-bottom: 20px; margin-top: 15px; /* 펼쳤을 때만 마진 */
 }
 
-.history-entry {
-    margin-bottom: 15px;
-    padding-bottom: 15px;
-    border-bottom: 1px dashed var(--border-color);
-    transition: border-color 0.3s ease;
+/* 개별 섹션 내부 컨텐츠 */
+.stats-content, .share-content { padding: 0; }
+#history-section h2, #stats-section h3, #share-section h3 {
+    font-size: 1.1em; color: var(--text-color-primary); margin-bottom: 15px; text-align: left;
 }
-.history-entry:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
+#stats-section p { font-size: 0.95em; color: var(--text-color-secondary); margin-bottom: 8px; }
+.share-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+.share-buttons button, .share-buttons a {
+    background-color: var(--share-button-bg); color: #fff; border: none; padding: 8px 12px;
+    border-radius: 4px; cursor: pointer; font-size: 0.9em; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px; transition: background-color 0.2s ease, transform 0.2s ease;
 }
+.share-buttons button:hover, .share-buttons a:hover { background-color: var(--share-button-hover-bg); transform: translateY(-1px); }
+.share-buttons button:focus-visible, .share-buttons a:focus-visible { outline: 2px solid var(--link-color); outline-offset: 1px; }
+.share-buttons button i, .share-buttons a i { font-size: 1.1em; }
+.copy-success { background-color: #2ecc71 !important; transform: translateY(-1px); }
 
-.history-entry strong {
-    display: block;
-    margin-bottom: 8px;
-    color: var(--text-color-secondary);
-    font-weight: 500;
-}
-.history-entry ul {
-    list-style-type: none;
-    padding-left: 0;
-}
-.history-entry ul li {
-    color: var(--text-color-tertiary);
-    padding-left: 20px;
-    position: relative;
-}
+/* 지난 기록 내부 스타일 */
+.history-entry { margin-bottom: 15px; padding-bottom: 15px; padding-left: 0; /* border-bottom 제거는 유지 */ }
+.history-entry[data-achieved="true"] { border-left: 3px solid var(--all-done-text); padding-left: 10px; }
+.history-entry:last-child { margin-bottom: 0; padding-bottom: 0; }
+.history-entry strong { display: block; margin-bottom: 8px; color: var(--text-color-secondary); font-weight: 500; }
+.history-entry ul { list-style-type: none; padding-left: 0; }
+.history-entry ul li { color: var(--text-color-tertiary); padding-left: 20px; position: relative; line-height: 1.5; }
 .history-entry ul li::before {
-    content: '•';
-    color: var(--button-primary-bg);
-    position: absolute;
-    left: 0;
-    font-size: 1.2em;
-    line-height: 1;
-    transition: color 0.3s ease;
+    content: '•'; color: var(--button-primary-bg); position: absolute; left: 0; top: 0.1em;
+    font-size: 1.2em; line-height: 1; transition: color 0.3s ease;
 }
+.history-entry ul li.completed { text-decoration: line-through; color: var(--completed-text-color); transition: color 0.3s ease; }
+.history-entry ul li.completed::before { color: var(--completed-text-color); }
 
-.history-entry ul li.completed {
-    text-decoration: line-through;
-    color: var(--completed-text-color);
-    transition: color 0.3s ease;
-}
-.history-entry ul li.completed::before {
-    color: var(--completed-text-color);
-}
+.hidden { /* JS 토글용 */ }
 
-
-.hidden {
-    display: none;
-}
-
-/* 모바일 반응형 스타일 */
+/* --- 모바일 반응형 --- */
 @media (max-width: 480px) {
-    body {
-        padding: 10px;
-    }
-    .container {
-        padding: 20px 15px;
-    }
-    header h1 {
-        font-size: 1.7em;
-    }
-    #theme-toggle {
-        font-size: 1.3em;
-        width: 36px;
-        height: 36px;
-    }
-    header #current-date {
-        font-size: 0.85em;
-    }
-    header .subtitle {
-        font-size: 0.9em;
-    }
-    .task-item {
-        padding: 12px 0;
-    }
-    .task-item input[type="checkbox"] {
-        margin-right: 10px;
-        width: 18px;
-        height: 18px;
-        margin-top: 6px;
-    }
-    .task-item textarea {
-        font-size: 0.95em;
-        min-height: 28px;
-    }
-    #all-done-message {
-        padding: 10px;
-        font-size: 0.9em;
-    }
+    body { padding: 10px; }
+    .container { padding: 20px 15px; }
+    header { margin-bottom: 25px; padding-bottom: 5px; }
+    header h1 { font-size: 1.7em; }
+    #theme-toggle { font-size: 1.3em; width: 36px; height: 36px; }
+    header #current-date { font-size: 0.85em; }
+    header .subtitle { font-size: 0.9em; }
+    main { margin-bottom: 25px; }
+    .task-item { padding: 10px 0; gap: 8px; } /* 모바일에서도 패딩 유지 */
+    .task-item input[type="checkbox"] { width: 18px; height: 18px; margin-top: 7px; }
+    .task-item textarea { font-size: 0.95em; min-height: 28px; padding: 7px 5px; }
+    #all-done-message { margin-top: 20px; padding: 10px; font-size: 0.9em; }
 
-    .stats-section, .share-section {
-        padding: 10px;
-    }
-    .stats-section h3, .share-section h3 {
-        font-size: 1em;
-    }
-    .stats-section p {
-        font-size: 0.9em;
-    }
-    .share-buttons button, .share-buttons a {
-        padding: 7px 10px;
-        font-size: 0.85em;
-    }
+    footer { padding-top: 15px; }
+    .footer-toggles { gap: 8px; margin-bottom: 15px; }
+     #toggle-history-btn, #toggle-stats-btn, #toggle-share-btn { padding: 8px 12px; font-size: 0.85em; }
+    .footer-support { margin-bottom: 10px; }
+    .support-link { font-size: 0.85em; }
 
-    .footer-links {
-        flex-direction: column; /* 작은 화면에서 세로 정렬 */
-        gap: 10px;
-    }
-    .support-link {
-        order: 2; /* 후원 링크를 아래로 */
-    }
-    #toggle-history-btn {
-        order: 1; /* 기록 보기 버튼을 위로 */
-        padding: 10px 15px;
-        font-size: 0.9em;
-    }
-    #history-section:not(.hidden) {
-        padding: 15px;
-    }
-    #history-section h2 {
-        font-size: 1.1em;
-    }
+    .toggle-section:not(.hidden) { padding: 15px; margin-top: 10px; } /* 모바일 펼침 마진 */
+    #history-section h2, #stats-section h3, #share-section h3 { font-size: 1.1em; margin-bottom: 12px;}
+    #stats-section p { font-size: 0.9em; margin-bottom: 6px; }
+    .share-buttons button, .share-buttons a { padding: 7px 10px; font-size: 0.85em; }
 }
