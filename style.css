@@ -1,8 +1,23 @@
+/* style.css - v1.5 */
+
 /* 기본 스타일 초기화 */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+}
+
+/* 스크린 리더 전용 클래스 */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
 }
 
 /* CSS 변수 */
@@ -11,14 +26,45 @@
     
     /* 라이트 테마 */
     --bg-color-light: #f4f7f6; --container-bg-color-light: #ffffff; --text-color-primary-light: #2c3e50; --text-color-secondary-light: #34495e; --text-color-tertiary-light: #7f8c8d; --border-color-light: #ecf0f1; --input-focus-bg-light: #f8f9fa; --input-focus-shadow-light: rgba(52, 152, 219, 0.25); --completed-text-color-light: #95a5a6; --button-primary-bg-light: #3498db; --button-primary-hover-bg-light: #2980b9; --button-secondary-bg-light: #e9ecef; --button-secondary-hover-bg-light: #dee2e6; --button-secondary-text-light: #495057; --button-text-color-light: #ffffff; --all-done-bg-light: #e8f5e9; --all-done-text-light: #2e7d32; --section-bg-light: #f9f9f9; --section-border-light: #eee; --theme-toggle-bg-light: transparent; --theme-toggle-hover-bg-light: rgba(0,0,0,0.05); --link-color-light: #3498db; --link-hover-color-light: #2980b9; --stats-content-bg-light: #f0f3f2; --share-content-bg-light: #f0f3f2; --share-button-bg-light: #555; --share-button-hover-bg-light: #333;
+    --footer-button-active-bg-light: #3498db; --footer-button-active-text-light: #ffffff;
+    --custom-checkbox-border-light: #bdc3c7; --custom-checkbox-checked-bg-light: var(--button-primary-bg-light); --custom-checkbox-checkmark-light: #ffffff;
+    --memo-icon-color-light: #7f8c8d; --memo-icon-hover-color-light: #34495e; --memo-icon-active-color-light: var(--button-primary-bg-light);
+    --additional-task-bg-light: #f9fafb; --additional-task-border-light: #e5e7eb;
+    --chart-grid-color-light: rgba(0, 0, 0, 0.1); --chart-font-color-light: #2c3e50;
+    --stats-visual-item-bg-light: #e9ecef;
+    --app-mode-toggle-bg-light: var(--button-secondary-bg-light); --app-mode-toggle-text-light: var(--button-secondary-text-light);
+
     /* 다크 테마 */
     --bg-color-dark: #212529; --container-bg-color-dark: #2c3034; --text-color-primary-dark: #e9ecef; --text-color-secondary-dark: #ced4da; --text-color-tertiary-dark: #adb5bd; --border-color-dark: #495057; --input-focus-bg-dark: #3e444a; --input-focus-shadow-dark: rgba(13, 110, 253, 0.35); --completed-text-color-dark: #6c757d; --button-primary-bg-dark: #5dade2; --button-primary-hover-bg-dark: #4a90e2; --button-secondary-bg-dark: #495057; --button-secondary-hover-bg-dark: #5a6268; --button-secondary-text-dark: #e9ecef; --button-text-color-dark: #212529; --all-done-bg-dark: #2a3b2c; --all-done-text-dark: #a5d6a7; --section-bg-dark: #343a40; --section-border-dark: #495057; --theme-toggle-hover-bg-dark: rgba(255,255,255,0.1); --link-color-dark: #5dade2; --link-hover-color-dark: #8ecae6; --stats-content-bg-dark: #3b4148; --share-content-bg-dark: #3b4148; --share-button-bg-dark: #777; --share-button-hover-bg-dark: #999;
+    --footer-button-active-bg-dark: var(--button-primary-bg-dark); --footer-button-active-text-dark: #212529;
+    --custom-checkbox-border-dark: #7f8c8d; --custom-checkbox-checked-bg-dark: var(--button-primary-bg-dark); --custom-checkbox-checkmark-dark: #212529;
+    --memo-icon-color-dark: #adb5bd; --memo-icon-hover-color-dark: #e9ecef; --memo-icon-active-color-dark: var(--button-primary-bg-dark);
+    --additional-task-bg-dark: #373c40; --additional-task-border-dark: #454b50;
+    --chart-grid-color-dark: rgba(255, 255, 255, 0.1); --chart-font-color-dark: #e9ecef;
+    --stats-visual-item-bg-dark: #495057;
+    --app-mode-toggle-bg-dark: var(--button-secondary-bg-dark); --app-mode-toggle-text-dark: var(--button-secondary-text-dark);
+
+
     /* 기본값 설정 */
     --bg-color: var(--bg-color-light); --container-bg-color: var(--container-bg-color-light); --text-color-primary: var(--text-color-primary-light); --text-color-secondary: var(--text-color-secondary-light); --text-color-tertiary: var(--text-color-tertiary-light); --border-color: var(--border-color-light); --input-focus-bg: var(--input-focus-bg-light); --input-focus-shadow: var(--input-focus-shadow-light); --completed-text-color: var(--completed-text-color-light); --button-primary-bg: var(--button-primary-bg-light); --button-primary-hover-bg: var(--button-primary-hover-bg-light); --button-secondary-bg: var(--button-secondary-bg-light); --button-secondary-hover-bg: var(--button-secondary-hover-bg-light); --button-secondary-text: var(--button-secondary-text-light); --button-text-color: var(--button-text-color-light); --all-done-bg: var(--all-done-bg-light); --all-done-text: var(--all-done-text-light); --section-bg: var(--section-bg-light); --section-border: var(--section-border-light); --theme-toggle-bg: transparent; --theme-toggle-hover-bg: var(--theme-toggle-hover-bg-light); --link-color: var(--link-color-light); --link-hover-color: var(--link-hover-color-light); --stats-content-bg: var(--stats-content-bg-light); --share-content-bg: var(--share-content-bg-light); --share-button-bg: var(--share-button-bg-light); --share-button-hover-bg: var(--share-button-hover-bg-light);
+    --footer-button-active-bg: var(--footer-button-active-bg-light); --footer-button-active-text: var(--footer-button-active-text-light);
+    --custom-checkbox-border: var(--custom-checkbox-border-light); --custom-checkbox-checked-bg: var(--custom-checkbox-checked-bg-light); --custom-checkbox-checkmark: var(--custom-checkbox-checkmark-light);
+    --memo-icon-color: var(--memo-icon-color-light); --memo-icon-hover-color: var(--memo-icon-hover-color-light); --memo-icon-active-color: var(--memo-icon-active-color-light);
+    --additional-task-bg: var(--additional-task-bg-light); --additional-task-border: var(--additional-task-border-light);
+    --chart-grid-color: var(--chart-grid-color-light); --chart-font-color: var(--chart-font-color-light);
+    --stats-visual-item-bg: var(--stats-visual-item-bg-light);
+    --app-mode-toggle-bg: var(--app-mode-toggle-bg-light); --app-mode-toggle-text: var(--app-mode-toggle-text-light);
 }
 body.dark-theme {
     /* 다크 테마 덮어쓰기 */
     --bg-color: var(--bg-color-dark); --container-bg-color: var(--container-bg-color-dark); --text-color-primary: var(--text-color-primary-dark); --text-color-secondary: var(--text-color-secondary-dark); --text-color-tertiary: var(--text-color-tertiary-dark); --border-color: var(--border-color-dark); --input-focus-bg: var(--input-focus-bg-dark); --input-focus-shadow: var(--input-focus-shadow-dark); --completed-text-color: var(--completed-text-color-dark); --button-primary-bg: var(--button-primary-bg-dark); --button-primary-hover-bg: var(--button-primary-hover-bg-dark); --button-secondary-bg: var(--button-secondary-bg-dark); --button-secondary-hover-bg: var(--button-secondary-hover-bg-dark); --button-secondary-text: var(--button-secondary-text-dark); --button-text-color: var(--button-text-color-dark); --all-done-bg: var(--all-done-bg-dark); --all-done-text: var(--all-done-text-dark); --section-bg: var(--section-bg-dark); --section-border: var(--section-border-dark); --theme-toggle-hover-bg: var(--theme-toggle-hover-bg-dark); --link-color: var(--link-color-dark); --link-hover-color: var(--link-hover-color-dark); --stats-content-bg: var(--stats-content-bg-dark); --share-content-bg: var(--share-content-bg-dark); --share-button-bg: var(--share-button-bg-dark); --share-button-hover-bg: var(--share-button-hover-bg-dark);
+    --footer-button-active-bg: var(--footer-button-active-bg-dark); --footer-button-active-text: var(--footer-button-active-text-dark);
+    --custom-checkbox-border: var(--custom-checkbox-border-dark); --custom-checkbox-checked-bg: var(--custom-checkbox-checked-bg-dark); --custom-checkbox-checkmark: var(--custom-checkbox-checkmark-dark);
+    --memo-icon-color: var(--memo-icon-color-dark); --memo-icon-hover-color: var(--memo-icon-hover-color-dark); --memo-icon-active-color: var(--memo-icon-active-color-dark);
+    --additional-task-bg: var(--additional-task-bg-dark); --additional-task-border: var(--additional-task-border-dark);
+    --chart-grid-color: var(--chart-grid-color-dark); --chart-font-color: var(--chart-font-color-dark);
+    --stats-visual-item-bg: var(--stats-visual-item-bg-dark);
+    --app-mode-toggle-bg: var(--app-mode-toggle-bg-dark); --app-mode-toggle-text: var(--app-mode-toggle-text-dark);
 }
 
 /* --- 기본 레이아웃 --- */
@@ -29,15 +75,32 @@ body {
 }
 .container {
     background-color: var(--container-bg-color); padding: 25px 30px; border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); width: 100%; max-width: 500px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); width: 100%; max-width: 600px;
     transition: background-color 0.3s ease;
 }
 header {
-    text-align: center; margin-bottom: 30px; padding-bottom: 10px;
-    /* border-bottom 제거는 유지 */
+    text-align: center; margin-bottom: 25px; padding-bottom: 10px;
 }
 .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 header h1 { color: var(--text-color-primary); margin-bottom: 0; font-size: 2em; font-weight: 700; }
+
+.header-controls { display: flex; align-items: center; gap: 8px; }
+.task-count-setting select {
+    padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border-color);
+    background-color: var(--container-bg-color); color: var(--text-color-secondary);
+    font-size: 0.9em; cursor: pointer; transition: border-color 0.2s, background-color 0.2s;
+}
+.task-count-setting select:focus {
+    outline: none; border-color: var(--button-primary-bg); box-shadow: 0 0 0 2px var(--input-focus-shadow);
+}
+#app-mode-toggle {
+    padding: 6px 10px; font-size: 0.85em; font-weight: 500;
+    background-color: var(--app-mode-toggle-bg); color: var(--app-mode-toggle-text);
+    border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+#app-mode-toggle:hover { background-color: var(--button-secondary-hover-bg); }
+
 #theme-toggle {
     background: var(--theme-toggle-bg); border: none; font-size: 1.5em; cursor: pointer; padding: 5px;
     border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;
@@ -49,25 +112,58 @@ header #current-date { font-size: 0.9em; color: var(--text-color-tertiary); marg
 header .subtitle { font-size: 1em; color: var(--text-color-secondary); }
 main { margin-bottom: 30px; }
 
-/* --- 할 일 목록 스타일 --- */ /* <--- 주석 수정 */
+.task-list-wrapper h2, #additional-tasks-section h2, 
+#history-section h2, #stats-section h3, #share-section h3, #settings-section h3 {
+    font-size: 1.2em; color: var(--text-color-primary); margin-bottom: 15px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border-color);
+    display: flex; align-items: center;
+}
+.task-list-wrapper h2 i, #additional-tasks-section h2 i,
+#history-section h2 i, #stats-section h3 i, #share-section h3 i, #settings-section h3 i {
+    margin-right: 8px; color: var(--button-primary-bg); font-size: 0.9em;
+}
+
+/* --- 할 일 목록 스타일 --- */
 .task-list { }
 .task-item {
-    display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 10px; padding: 12px 0;
-    border-bottom: 1px solid var(--border-color); /* <--- 구분선 추가 */
-    transition: border-color 0.3s ease; /* 테마 변경 시 구분선 색상 부드럽게 변경 */
+    display: grid; grid-template-columns: auto 1fr; grid-template-areas: "check content" ". memo";
+    align-items: start; gap: 0 12px; padding: 12px 0;
+    border-bottom: 1px solid var(--border-color); transition: border-color 0.3s ease;
 }
-.task-item:last-child {
-    border-bottom: none; /* <--- 마지막 항목에는 구분선 제거 */
+.task-item:last-child { border-bottom: none; }
+
+.custom-checkbox-label { grid-area: check; }
+.task-item-content { grid-area: content; display: flex; align-items: flex-start; }
+.memo-container { grid-area: memo; margin-top: 5px; }
+
+.custom-checkbox-label {
+    position: relative; display: inline-block; width: 20px; height: 20px;
+    cursor: pointer; margin-top: 7px;
 }
-.task-item input[type="checkbox"] {
-    margin-top: 6px; width: 20px; height: 20px; cursor: pointer;
-    accent-color: var(--button-primary-bg); transition: accent-color 0.3s ease;
+.custom-checkbox-label input[type="checkbox"] { opacity: 0; width: 0; height: 0; position: absolute; }
+.custom-checkbox-span {
+    position: absolute; top: 0; left: 0; height: 20px; width: 20px;
+    background-color: transparent; border: 2px solid var(--custom-checkbox-border);
+    border-radius: 4px; transition: background-color 0.2s ease, border-color 0.2s ease;
 }
-.task-item input[type="checkbox"]:focus-visible { outline: 2px solid var(--button-primary-bg); outline-offset: 2px; }
+.custom-checkbox-label input[type="checkbox"]:checked ~ .custom-checkbox-span {
+    background-color: var(--custom-checkbox-checked-bg); border-color: var(--custom-checkbox-checked-bg);
+}
+.custom-checkbox-span::after {
+    content: ""; position: absolute; display: none; 
+    left: 6px; top: 2px; width: 5px; height: 10px;
+    border: solid var(--custom-checkbox-checkmark); border-width: 0 2.5px 2.5px 0;
+    transform: rotate(45deg);
+}
+.custom-checkbox-label input[type="checkbox"]:checked ~ .custom-checkbox-span::after { display: block; }
+.custom-checkbox-label input[type="checkbox"]:focus-visible ~ .custom-checkbox-span {
+    outline: 2px solid var(--button-primary-bg); outline-offset: 2px;
+}
+
 .task-item textarea {
-    border: none; outline: none; font-size: 1em; font-family: inherit; padding: 8px 5px;
+    flex-grow: 1; border: none; outline: none; font-size: 1em; font-family: inherit; padding: 8px 5px;
     background-color: transparent; color: var(--text-color-secondary); resize: none;
-    overflow-y: hidden; line-height: 1.5; min-height: 30px; width: 100%;
+    overflow-y: hidden; line-height: 1.5; min-height: 30px;
     transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.2s ease; border-radius: 4px;
 }
 .task-item textarea:focus { background-color: var(--input-focus-bg); box-shadow: 0 0 0 2px var(--input-focus-shadow); }
@@ -75,6 +171,24 @@ main { margin-bottom: 30px; }
     text-decoration: line-through; color: var(--completed-text-color); text-decoration-color: var(--completed-text-color);
     transition: color 0.3s ease, text-decoration-color 0.3s ease;
 }
+
+.memo-icon {
+    background: none; border: none; color: var(--memo-icon-color);
+    font-size: 1em; padding: 8px; margin-left: 5px; cursor: pointer;
+    border-radius: 4px; transition: color 0.2s, background-color 0.2s;
+}
+.memo-icon:hover { color: var(--memo-icon-hover-color); background-color: var(--input-focus-bg); }
+.memo-icon.has-memo { color: var(--memo-icon-active-color); }
+.memo-icon i { pointer-events: none; }
+
+.memo-container textarea {
+    width: 100%; font-size: 0.9em; padding: 6px 8px;
+    border: 1px solid var(--border-color); border-radius: 4px;
+    background-color: var(--input-focus-bg); color: var(--text-color-secondary);
+    resize: none; overflow-y: hidden; line-height: 1.4; min-height: 28px;
+}
+.memo-container.hidden { display: none; }
+
 #all-done-message {
     text-align: center; margin-top: 25px; padding: 12px; background-color: var(--all-done-bg);
     color: var(--all-done-text); border-radius: 6px; font-weight: 500; opacity: 0; transform: translateY(10px);
@@ -82,27 +196,70 @@ main { margin-bottom: 30px; }
 }
 #all-done-message:not(.hidden) { opacity: 1; transform: translateY(0); }
 
+/* --- 추가 과제 섹션 스타일 --- */
+#additional-tasks-section {
+    margin-top: 30px; padding: 20px; background-color: var(--additional-task-bg);
+    border-radius: 8px; border: 1px solid var(--additional-task-border);
+}
+.add-additional-task { display: flex; gap: 10px; margin-bottom: 15px; }
+#add-additional-task-input {
+    flex-grow: 1; padding: 8px 10px; border: 1px solid var(--border-color);
+    border-radius: 4px; background-color: var(--container-bg-color);
+    color: var(--text-color-secondary); font-size: 0.95em;
+}
+#add-additional-task-input:focus {
+    outline: none; border-color: var(--button-primary-bg); box-shadow: 0 0 0 2px var(--input-focus-shadow);
+}
+#add-additional-task-btn {
+    padding: 8px 12px; background-color: var(--button-primary-bg); color: var(--button-text-color);
+    border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; transition: background-color 0.2s;
+}
+#add-additional-task-btn:hover { background-color: var(--button-primary-hover-bg); }
+#add-additional-task-btn i { margin-right: 4px; }
+
+#additional-task-list .no-additional-tasks { color: var(--text-color-tertiary); text-align: center; padding: 10px 0; }
+.additional-task-item {
+    display: flex; align-items: center; gap: 10px; padding: 8px 0;
+    border-bottom: 1px dashed var(--border-color); font-size: 0.95em;
+}
+.additional-task-item:last-child { border-bottom: none; }
+.additional-task-item .custom-checkbox-label { margin-top: 2px; }
+.additional-task-text { flex-grow: 1; color: var(--text-color-secondary); word-break: break-all; }
+.additional-task-item.completed .additional-task-text {
+    text-decoration: line-through; color: var(--completed-text-color);
+}
+.delete-additional-task-btn {
+    background: none; border: none; color: var(--memo-icon-color);
+    font-size: 0.9em; padding: 4px; cursor: pointer; border-radius: 4px;
+}
+.delete-additional-task-btn:hover { color: var(--memo-icon-hover-color); background-color: var(--input-focus-bg); }
+
 /* --- Footer 및 토글 섹션 --- */
-footer { margin-top: 0; padding-top: 20px; /* border-top 제거는 유지 */ }
+footer { margin-top: 30px; padding-top: 20px; }
 .footer-toggles { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-#toggle-history-btn, #toggle-stats-btn, #toggle-share-btn {
+#toggle-history-btn, #toggle-stats-btn, #toggle-share-btn, #toggle-settings-btn {
     background-color: var(--button-secondary-bg); color: var(--button-secondary-text);
     border: 1px solid var(--border-color); padding: 9px 14px; border-radius: 6px;
     cursor: pointer; font-size: 0.9em; font-weight: 500;
     transition: background-color 0.2s ease, transform 0.2s ease, color 0.3s ease, border-color 0.3s ease;
 }
-#toggle-history-btn:hover, #toggle-stats-btn:hover, #toggle-share-btn:hover { background-color: var(--button-secondary-hover-bg); transform: translateY(-2px); }
-#toggle-history-btn:active, #toggle-stats-btn:active, #toggle-share-btn:active { transform: translateY(0); }
-#toggle-history-btn:focus-visible, #toggle-stats-btn:focus-visible, #toggle-share-btn:focus-visible { outline: 2px solid var(--button-primary-bg); outline-offset: 1px; }
+#toggle-history-btn:hover, #toggle-stats-btn:hover, #toggle-share-btn:hover, #toggle-settings-btn:hover { background-color: var(--button-secondary-hover-bg); transform: translateY(-2px); }
+#toggle-history-btn:active, #toggle-stats-btn:active, #toggle-share-btn:active, #toggle-settings-btn:active { transform: translateY(0); }
+#toggle-history-btn:focus-visible, #toggle-stats-btn:focus-visible, #toggle-share-btn:focus-visible, #toggle-settings-btn:focus-visible { outline: 2px solid var(--button-primary-bg); outline-offset: 1px; }
+
+#toggle-history-btn.active, #toggle-stats-btn.active, #toggle-share-btn.active, #toggle-settings-btn.active {
+    background-color: var(--footer-button-active-bg); color: var(--footer-button-active-text);
+    border-color: var(--footer-button-active-bg); font-weight: 700;
+}
+
 .footer-support { text-align: center; margin-bottom: 15px; }
 .support-link { color: var(--link-color); text-decoration: none; font-size: 0.9em; transition: color 0.2s ease; }
 .support-link:hover { color: var(--link-hover-color); text-decoration: underline; }
 .support-link:focus-visible { outline: 2px solid var(--link-color); border-radius: 2px; }
 
-/* 토글 섹션 공통 스타일 (History, Stats, Share) - border와 margin-top 수정 */
 .toggle-section {
-    background-color: var(--section-bg); border-radius: 8px; border: none; /* 테두리 없음 */
-    max-height: 0; overflow: hidden; margin-top: 0; /* 접힌 상태 마진 없음 */
+    background-color: var(--section-bg); border-radius: 8px; border: none; 
+    max-height: 0; overflow: hidden; margin-top: 0; 
     padding-left: 20px; padding-right: 20px; padding-top: 0; padding-bottom: 0;
     transition: max-height 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
                 padding-top 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
@@ -111,15 +268,29 @@ footer { margin-top: 0; padding-top: 20px; /* border-top 제거는 유지 */ }
                 background-color 0.3s ease;
 }
 .toggle-section:not(.hidden) {
-    max-height: 800px; padding-top: 20px; padding-bottom: 20px; margin-top: 15px; /* 펼쳤을 때만 마진 */
+    max-height: 1000px; padding-top: 20px; padding-bottom: 20px; margin-top: 15px; 
 }
 
-/* 개별 섹션 내부 컨텐츠 */
-.stats-content, .share-content { padding: 0; }
-#history-section h2, #stats-section h3, #share-section h3 {
-    font-size: 1.1em; color: var(--text-color-primary); margin-bottom: 15px; text-align: left;
-}
+.stats-content, .share-content, .settings-content { padding: 0; }
 #stats-section p { font-size: 0.95em; color: var(--text-color-secondary); margin-bottom: 8px; }
+
+.stats-visuals {
+    margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);
+}
+.stats-visuals h4 {
+    font-size: 1em; color: var(--text-color-primary); margin-bottom: 5px; display: flex; align-items: center;
+}
+.stats-visuals h4 i { margin-right: 6px; color: var(--text-color-tertiary); }
+.stats-visuals p {
+    font-size: 1.1em; font-weight: 500; color: var(--button-primary-bg); margin-bottom: 15px;
+    padding: 8px; background-color: var(--stats-visual-item-bg); border-radius: 4px;
+}
+.chart-container {
+    position: relative; height: 250px; width: 100%; margin-top: 10px;
+    background-color: var(--container-bg-color); padding: 10px; border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
 .share-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
 .share-buttons button, .share-buttons a {
     background-color: var(--share-button-bg); color: #fff; border: none; padding: 8px 12px;
@@ -130,9 +301,9 @@ footer { margin-top: 0; padding-top: 20px; /* border-top 제거는 유지 */ }
 .share-buttons button:focus-visible, .share-buttons a:focus-visible { outline: 2px solid var(--link-color); outline-offset: 1px; }
 .share-buttons button i, .share-buttons a i { font-size: 1.1em; }
 .copy-success { background-color: #2ecc71 !important; transform: translateY(-1px); }
+#share-as-image-btn i.fa-spinner { animation: fa-spin 1s infinite linear; }
 
-/* 지난 기록 내부 스타일 */
-.history-entry { margin-bottom: 15px; padding-bottom: 15px; padding-left: 0; /* border-bottom 제거는 유지 */ }
+.history-entry { margin-bottom: 15px; padding-bottom: 15px; padding-left: 0; }
 .history-entry[data-achieved="true"] { border-left: 3px solid var(--all-done-text); padding-left: 10px; }
 .history-entry:last-child { margin-bottom: 0; padding-bottom: 0; }
 .history-entry strong { display: block; margin-bottom: 8px; color: var(--text-color-secondary); font-weight: 500; }
@@ -145,31 +316,85 @@ footer { margin-top: 0; padding-top: 20px; /* border-top 제거는 유지 */ }
 .history-entry ul li.completed { text-decoration: line-through; color: var(--completed-text-color); transition: color 0.3s ease; }
 .history-entry ul li.completed::before { color: var(--completed-text-color); }
 
-.hidden { /* JS 토글용 */ }
+.settings-description { font-size: 0.9em; color: var(--text-color-secondary); margin-bottom: 15px; line-height: 1.6; }
+.data-management-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+.data-management-buttons button {
+    padding: 8px 12px; background-color: var(--button-secondary-bg); color: var(--button-secondary-text);
+    border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; font-size: 0.9em;
+    transition: background-color 0.2s, border-color 0.2s; display: inline-flex; align-items: center; gap: 6px;
+}
+.data-management-buttons button:hover { background-color: var(--button-secondary-hover-bg); }
+.data-management-buttons button i { font-size: 1em; }
+
+.hidden { display: none !important; }
+
+/* --- 모드별 스타일 --- */
+body.simple-mode .task-count-setting,
+body.simple-mode #additional-tasks-section,
+body.simple-mode .stats-visuals,
+body.simple-mode #share-as-image-btn-container,
+body.simple-mode .memo-icon,
+body.simple-mode .memo-container,
+body.simple-mode #settings-section .settings-content {
+    display: none !important;
+}
+body.simple-mode #settings-section .simple-mode-settings-info {
+    display: block;
+    text-align: center;
+    color: var(--text-color-tertiary);
+    padding: 10px 0;
+}
+body.pro-mode #settings-section .simple-mode-settings-info {
+    display: none !important;
+}
+body.simple-mode .task-item {
+    grid-template-areas: "check content";
+}
 
 /* --- 모바일 반응형 --- */
-@media (max-width: 480px) {
+@media (max-width: 640px) {
     body { padding: 10px; }
-    .container { padding: 20px 15px; }
-    header { margin-bottom: 25px; padding-bottom: 5px; }
+    .container { padding: 20px 15px; max-width: 100%;}
+    header { margin-bottom: 20px; }
     header h1 { font-size: 1.7em; }
-    #theme-toggle { font-size: 1.3em; width: 36px; height: 36px; }
+    .header-controls { gap: 6px; flex-wrap: wrap; justify-content: center; } /* 정렬 수정 */
+    .task-count-setting { order: 2; } /* 순서 변경 */
+    #app-mode-toggle { order: 1; margin-bottom: 8px; width: auto; padding: 5px 10px; } /* 너비 auto, 패딩 조정 */
+    #theme-toggle { order: 3; font-size: 1.3em; width: 36px; height: 36px; }
+
     header #current-date { font-size: 0.85em; }
     header .subtitle { font-size: 0.9em; }
+
+    .task-list-wrapper h2, #additional-tasks-section h2,
+    #history-section h2, #stats-section h3, #share-section h3, #settings-section h3 { font-size: 1.1em; margin-bottom: 12px;}
+
     main { margin-bottom: 25px; }
-    .task-item { padding: 10px 0; gap: 8px; } /* 모바일에서도 패딩 유지 */
-    .task-item input[type="checkbox"] { width: 18px; height: 18px; margin-top: 7px; }
+    .task-item { padding: 10px 0; gap: 0 10px; } 
+    .custom-checkbox-label { width: 18px; height: 18px; margin-top: 7px;}
+    .custom-checkbox-span { width: 18px; height: 18px; }
+    .custom-checkbox-span::after { left: 5px; top: 1px; width: 4px; height: 8px; border-width: 0 2px 2px 0;}
     .task-item textarea { font-size: 0.95em; min-height: 28px; padding: 7px 5px; }
+    .memo-icon { padding: 7px; font-size: 0.95em; }
+    .memo-container textarea { font-size: 0.85em; padding: 5px 7px;}
+
     #all-done-message { margin-top: 20px; padding: 10px; font-size: 0.9em; }
 
-    footer { padding-top: 15px; }
-    .footer-toggles { gap: 8px; margin-bottom: 15px; }
-     #toggle-history-btn, #toggle-stats-btn, #toggle-share-btn { padding: 8px 12px; font-size: 0.85em; }
-    .footer-support { margin-bottom: 10px; }
-    .support-link { font-size: 0.85em; }
+    #additional-tasks-section { padding: 15px; margin-top: 25px; }
+    .add-additional-task { flex-direction: column; }
+    #add-additional-task-input { font-size: 0.9em; }
+    #add-additional-task-btn { font-size: 0.85em; text-align: center; }
 
-    .toggle-section:not(.hidden) { padding: 15px; margin-top: 10px; } /* 모바일 펼침 마진 */
-    #history-section h2, #stats-section h3, #share-section h3 { font-size: 1.1em; margin-bottom: 12px;}
+    footer { padding-top: 15px; }
+    .footer-toggles { gap: 6px; margin-bottom: 15px; }
+     #toggle-history-btn, #toggle-stats-btn, #toggle-share-btn, #toggle-settings-btn { padding: 7px 9px; font-size: 0.75em; }
+
+    .toggle-section:not(.hidden) { padding: 15px; margin-top: 10px; max-height: 1200px; }
     #stats-section p { font-size: 0.9em; margin-bottom: 6px; }
+    .stats-visuals h4 { font-size: 0.95em; }
+    .stats-visuals p { font-size: 1em; }
+    .chart-container { height: 200px; }
+
     .share-buttons button, .share-buttons a { padding: 7px 10px; font-size: 0.85em; }
+    .settings-description { font-size: 0.85em; }
+    .data-management-buttons button { font-size: 0.85em; padding: 7px 10px; }
 }
