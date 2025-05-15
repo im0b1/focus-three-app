@@ -1,4 +1,4 @@
-// script.js - v1.5
+// script.js - v1.10
 document.addEventListener('DOMContentLoaded', () => {
     // --- 요소 가져오기 ---
     const appModeToggle = document.getElementById('app-mode-toggle');
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statsSection = document.getElementById('stats-section');
     const shareSection = document.getElementById('share-section');
     const settingsSection = document.getElementById('settings-section');
-    const settingsContentDiv = document.querySelector('#settings-section .settings-content'); // v1.5
+    const settingsContentDiv = document.querySelector('#settings-section .settings-content');
 
     const historyListDiv = document.getElementById('history-list');
     const weeklyStatsEl = document.getElementById('weekly-stats');
@@ -40,6 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareAsImageBtn = document.getElementById('share-as-image-btn');
     const shareAsImageBtnContainer = document.getElementById('share-as-image-btn-container');
 
+    const shareOptionsDiv = document.querySelector('#share-section .share-options');
+    const shareIncludeAdditionalCheckbox = document.getElementById('share-include-additional');
+    const shareIncludeMemosCheckbox = document.getElementById('share-include-memos');
+    const shareIncludeMemosLabel = document.getElementById('share-include-memos-label');
+
+
     const exportDataBtn = document.getElementById('export-data-btn');
     const importDataBtn = document.getElementById('import-data-btn');
     const importFileInput = document.getElementById('import-file-input');
@@ -50,8 +56,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let additionalTasks = [];
     let history = [];
     let achievementChart = null;
-    let currentAppMode = 'simple';
-    let proModeTaskCountSetting = 3;
+    let currentAppMode = 'simple'; 
+    let focusModeTaskCountSetting = 3;
+    let shareOptions = {
+        includeAdditional: false,
+        includeMemos: false
+    };
 
     // --- 유틸리티 함수 ---
     function announceToScreenReader(message) {
@@ -64,11 +74,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 모드 관리 ---
     function applyAppMode(mode, isInitialLoad = false) {
         currentAppMode = mode;
-        localStorage.setItem('focusThreeMode', mode);
+        localStorage.setItem('oneulSetMode', mode);
         document.body.classList.toggle('simple-mode', mode === 'simple');
-        document.body.classList.toggle('pro-mode', mode === 'pro');
-        appModeToggle.textContent = mode === 'simple' ? '프로 모드' : '심플 모드';
-        appModeToggle.setAttribute('aria-label', mode === 'simple' ? '프로 모드로 전환' : '심플 모드로 전환');
+        document.body.classList.toggle('focus-mode', mode === 'focus'); 
+        
+        const modeToSwitchToText = mode === 'simple' ? '집중' : '심플';
+        appModeToggle.textContent = `${modeToSwitchToText} 모드로 전환`;
+        appModeToggle.setAttribute('aria-label', `${modeToSwitchToText} 모드로 전환`);
+
+        if (shareOptionsDiv) shareOptionsDiv.classList.toggle('hidden', mode === 'simple');
+        if (shareIncludeMemosLabel) shareIncludeMemosLabel.classList.toggle('hidden', mode === 'simple');
 
         if (mode === 'simple') {
             MAX_TASKS_CURRENT_MODE = 3;
@@ -79,56 +94,51 @@ document.addEventListener('DOMContentLoaded', () => {
             if (settingsContentDiv) settingsContentDiv.classList.add('hidden');
 
             if (toggleSettingsBtn && toggleSettingsBtn.classList.contains('active') && settingsSection && settingsSection.classList.contains('hidden')) {
-                // 설정 섹션이 닫혀있는데 버튼이 active면, 버튼 텍스트만 원복
                  toggleSettingsBtn.textContent = sections.find(s => s.id === 'settings-section').baseText;
                  toggleSettingsBtn.classList.remove('active');
                  toggleSettingsBtn.setAttribute('aria-expanded', 'false');
             } else if (toggleSettingsBtn && toggleSettingsBtn.classList.contains('active') && settingsSection && !settingsSection.classList.contains('hidden')) {
-                // 설정 섹션이 열려있으면 닫음 (버튼 상태는 toggleSection이 처리)
-                // toggleSection('settings-section'); // 이렇게 하면 무한루프 가능성 있음. 직접 닫기
                 settingsSection.classList.add('hidden');
                 toggleSettingsBtn.textContent = sections.find(s => s.id === 'settings-section').baseText;
                 toggleSettingsBtn.classList.remove('active');
                 toggleSettingsBtn.setAttribute('aria-expanded', 'false');
                 settingsSection.setAttribute('aria-hidden', 'true');
             }
-
-
-        } else { // pro mode
-            MAX_TASKS_CURRENT_MODE = proModeTaskCountSetting;
+        } else { // focus mode 
+            MAX_TASKS_CURRENT_MODE = focusModeTaskCountSetting;
             taskCountSelectorContainer.classList.remove('hidden');
             additionalTasksSection.classList.remove('hidden');
             if (statsVisualsContainer) statsVisualsContainer.classList.remove('hidden');
             if (shareAsImageBtnContainer) shareAsImageBtnContainer.classList.remove('hidden');
             if (settingsContentDiv) settingsContentDiv.classList.remove('hidden');
         }
-        taskCountSelector.value = proModeTaskCountSetting;
+        taskCountSelector.value = focusModeTaskCountSetting;
 
         while (tasks.length < 5) {
             tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });
         }
         
         renderTasks();
-        if (currentAppMode === 'pro') renderAdditionalTasks();
-        else if (additionalTaskListDiv) additionalTaskListDiv.innerHTML = ''; // 심플모드면 추가과제 비움
+        if (currentAppMode === 'focus') renderAdditionalTasks();
+        else if (additionalTaskListDiv) additionalTaskListDiv.innerHTML = ''; 
 
         if (!isInitialLoad) {
             saveState();
-            announceToScreenReader(`${mode === 'simple' ? '심플' : '프로'} 모드로 변경되었습니다.`);
+            announceToScreenReader(`${mode === 'simple' ? '심플' : '집중'} 모드로 변경되었습니다.`);
         }
     }
 
     appModeToggle.addEventListener('click', () => {
-        const newMode = currentAppMode === 'simple' ? 'pro' : 'simple';
+        const newMode = currentAppMode === 'simple' ? 'focus' : 'simple';
         applyAppMode(newMode);
     });
 
     // --- 테마 관리 ---
     function applyTheme(theme) {
-        if (theme === 'dark') { document.body.classList.add('dark-theme'); themeToggleButton.textContent = '☀️'; localStorage.setItem('focusThreeTheme', 'dark'); }
-        else { document.body.classList.remove('dark-theme'); themeToggleButton.textContent = '🌙'; localStorage.setItem('focusThreeTheme', 'light'); }
+        if (theme === 'dark') { document.body.classList.add('dark-theme'); themeToggleButton.textContent = '☀️'; localStorage.setItem('oneulSetTheme', 'dark'); }
+        else { document.body.classList.remove('dark-theme'); themeToggleButton.textContent = '🌙'; localStorage.setItem('oneulSetTheme', 'light'); }
         if (achievementChart) achievementChart.destroy(); achievementChart = null;
-        if (currentAppMode === 'pro') renderStatsVisuals();
+        if (currentAppMode === 'focus') renderStatsVisuals();
     }
     themeToggleButton.addEventListener('click', () => {
         const isDarkMode = document.body.classList.contains('dark-theme');
@@ -144,37 +154,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 상태 저장 및 로드 ---
     function saveState() {
-        localStorage.setItem('focusThreeTasks', JSON.stringify(tasks));
-        localStorage.setItem('focusThreeAdditionalTasks', JSON.stringify(additionalTasks));
-        localStorage.setItem('focusThreeLastDate', getTodayDateString());
-        localStorage.setItem('focusThreeHistory', JSON.stringify(history));
-        localStorage.setItem('focusThreeProTaskCountSetting', proModeTaskCountSetting.toString());
+        localStorage.setItem('oneulSetTasks', JSON.stringify(tasks));
+        localStorage.setItem('oneulSetAdditionalTasks', JSON.stringify(additionalTasks));
+        localStorage.setItem('oneulSetLastDate', getTodayDateString());
+        localStorage.setItem('oneulSetHistory', JSON.stringify(history));
+        localStorage.setItem('oneulSetFocusTaskCountSetting', focusModeTaskCountSetting.toString());
+        localStorage.setItem('oneulSetShareOptions', JSON.stringify(shareOptions));
         updateStats();
-        if (currentAppMode === 'pro') renderStatsVisuals();
+        if (currentAppMode === 'focus') renderStatsVisuals();
     }
 
     function loadState() {
-        const savedAppMode = localStorage.getItem('focusThreeMode') || 'simple';
+        const savedAppMode = localStorage.getItem('oneulSetMode') || 'simple';
         
-        const storedProTaskCount = localStorage.getItem('focusThreeProTaskCountSetting');
-        if (storedProTaskCount) {
-            proModeTaskCountSetting = parseInt(storedProTaskCount, 10);
+        const storedFocusTaskCount = localStorage.getItem('oneulSetFocusTaskCountSetting');
+        if (storedFocusTaskCount) {
+            focusModeTaskCountSetting = parseInt(storedFocusTaskCount, 10);
         } else {
-            proModeTaskCountSetting = 3;
+            focusModeTaskCountSetting = 3;
         }
-        taskCountSelector.value = proModeTaskCountSetting;
+        taskCountSelector.value = focusModeTaskCountSetting;
+
+        const storedShareOptions = localStorage.getItem('oneulSetShareOptions');
+        if (storedShareOptions) {
+            try {
+                shareOptions = JSON.parse(storedShareOptions);
+                if (shareIncludeAdditionalCheckbox) shareIncludeAdditionalCheckbox.checked = shareOptions.includeAdditional;
+                if (shareIncludeMemosCheckbox) shareIncludeMemosCheckbox.checked = shareOptions.includeMemos;
+            } catch (e) { console.error("Error parsing share options:", e); }
+        }
+
 
         applyAppMode(savedAppMode, true);
 
-        const storedTasks = localStorage.getItem('focusThreeTasks');
-        const storedAdditionalTasks = localStorage.getItem('focusThreeAdditionalTasks');
-        const storedLastDate = localStorage.getItem('focusThreeLastDate');
-        const storedHistory = localStorage.getItem('focusThreeHistory');
+        const storedTasks = localStorage.getItem('oneulSetTasks');
+        const storedAdditionalTasks = localStorage.getItem('oneulSetAdditionalTasks');
+        const storedLastDate = localStorage.getItem('oneulSetLastDate');
+        const storedHistory = localStorage.getItem('oneulSetHistory');
         const todayDateStr = getTodayDateString();
 
         if (storedHistory) { try { history = JSON.parse(storedHistory); if (!Array.isArray(history)) history = []; } catch (e) { history = []; } }
         
-        if (currentAppMode === 'pro' && storedAdditionalTasks) {
+        if (currentAppMode === 'focus' && storedAdditionalTasks) {
             try { additionalTasks = JSON.parse(storedAdditionalTasks); if(!Array.isArray(additionalTasks)) additionalTasks = []; } catch (e) { additionalTasks = [];}
         } else {
             additionalTasks = [];
@@ -187,19 +208,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 while(tasks.length < 5) {
                     tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });
                 }
-                 if(tasks.length > 5) tasks = tasks.slice(0,5); // 혹시 모를 초과분 제거
+                 if(tasks.length > 5) tasks = tasks.slice(0,5); 
             } catch (e) { initializeTasks(); }
         } else {
             if (storedTasks && storedLastDate) {
                 try {
                     const yesterdayTasksData = JSON.parse(storedTasks);
-                    const yesterdayProModeTaskCount = parseInt(localStorage.getItem('focusThreeProTaskCountSettingBeforeReset') || proModeTaskCountSetting, 10);
+                    const yesterdayFocusModeTaskCount = parseInt(localStorage.getItem('oneulSetFocusTaskCountSettingBeforeReset') || focusModeTaskCountSetting, 10);
                     
                     if (Array.isArray(yesterdayTasksData)) {
-                        const relevantYesterdayTasks = yesterdayTasksData.slice(0, yesterdayProModeTaskCount);
+                        const relevantYesterdayTasks = yesterdayTasksData.slice(0, yesterdayFocusModeTaskCount);
                         const allYesterdayTasksFilled = relevantYesterdayTasks.every(task => task && typeof task.text === 'string' && task.text.trim() !== "");
                         const allYesterdayTasksCompleted = relevantYesterdayTasks.every(task => task && task.completed);
-                        const yesterdayAchieved = allYesterdayTasksFilled && relevantYesterdayTasks.length === yesterdayProModeTaskCount && allYesterdayTasksCompleted && yesterdayProModeTaskCount > 0;
+                        const yesterdayAchieved = allYesterdayTasksFilled && relevantYesterdayTasks.length === yesterdayFocusModeTaskCount && allYesterdayTasksCompleted && yesterdayFocusModeTaskCount > 0;
                         
                         if (!history.some(entry => entry.date === storedLastDate)) {
                             history.unshift({ date: storedLastDate, tasks: relevantYesterdayTasks, achieved: yesterdayAchieved });
@@ -208,9 +229,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } catch (e) { console.error("Error processing yesterday's tasks for history", e); }
             }
-            localStorage.setItem('focusThreeProTaskCountSettingBeforeReset', proModeTaskCountSetting.toString());
+            localStorage.setItem('oneulSetFocusTaskCountSettingBeforeReset', focusModeTaskCountSetting.toString());
             initializeTasks();
-            if (currentAppMode === 'pro') additionalTasks = []; 
+            if (currentAppMode === 'focus') additionalTasks = []; 
             saveState();
         }
         
@@ -222,8 +243,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         updateStats();
-        if (currentAppMode === 'pro') renderStatsVisuals();
-        if (currentAppMode === 'pro') renderAdditionalTasks();
+        if (currentAppMode === 'focus') renderStatsVisuals();
+        if (currentAppMode === 'focus') renderAdditionalTasks();
+
+        setTimeout(() => { 
+            const firstTaskTextarea = taskListDiv.querySelector('.task-item:first-child textarea');
+            if (firstTaskTextarea && window.innerWidth > 768) {
+                if (document.activeElement === document.body || document.activeElement === null) {
+                   firstTaskTextarea.focus();
+                }
+            }
+        }, 100);
     }
 
     function initializeTasks() {
@@ -237,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentAppMode === 'simple') return;
         const newCount = parseInt(e.target.value, 10);
         const oldCountDisplay = MAX_TASKS_CURRENT_MODE;
-        proModeTaskCountSetting = newCount;
+        focusModeTaskCountSetting = newCount; 
         MAX_TASKS_CURRENT_MODE = newCount;
         
         renderTasks();
@@ -290,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             taskContentDiv.appendChild(textareaField);
 
-            if (currentAppMode === 'pro') {
+            if (currentAppMode === 'focus') {
                 const memoIcon = document.createElement('button');
                 memoIcon.classList.add('memo-icon');
                 memoIcon.innerHTML = '<i class="fas fa-sticky-note"></i>';
@@ -315,7 +345,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     memoIcon.setAttribute('aria-expanded', !isHidden);
                     if(!isHidden) memoTextarea.focus();
                     else textareaField.focus();
-                    autoGrowTextarea(textareaField);
+                    autoGrowTextarea(textareaField); // 할 일 textarea 높이도 재조정
+                    if(!isHidden) autoGrowTextarea(memoTextarea); // 메모 textarea 높이도 재조정
                 });
                 if (task.memo && task.memo.trim() !== "") {
                     memoIcon.classList.add('has-memo');
@@ -414,6 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderAdditionalTasks();
                 saveState();
                 announceToScreenReader(`추가 과제 "${text}"가 추가되었습니다.`);
+                addAdditionalTaskInput.focus();
             }
         });
         addAdditionalTaskInput.addEventListener('keypress', (e) => {
@@ -443,17 +475,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (sec.id === 'stats-section' && statsVisualsContainer) statsVisualsContainer.classList.add('hidden');
                 if (sec.id === 'share-section' && shareAsImageBtnContainer) shareAsImageBtnContainer.classList.add('hidden');
                 if (sec.id === 'settings-section' && settingsContentDiv) settingsContentDiv.classList.add('hidden');
-            } else {
+                if (sec.id === 'share-section' && shareOptionsDiv) shareOptionsDiv.classList.add('hidden');
+            } else { // 'focus' mode
                  if (sec.id === 'stats-section' && statsVisualsContainer) statsVisualsContainer.classList.remove('hidden');
                  if (sec.id === 'share-section' && shareAsImageBtnContainer) shareAsImageBtnContainer.classList.remove('hidden');
                  if (sec.id === 'settings-section' && settingsContentDiv) settingsContentDiv.classList.remove('hidden');
+                 if (sec.id === 'share-section' && shareOptionsDiv) shareOptionsDiv.classList.remove('hidden');
             }
 
             if (sec.id === sectionIdToToggle) {
                 const isHidden = sectionElement.classList.contains('hidden');
-                // 심플 모드이고 settings 섹션이면, 실제 내용은 숨겨져 있으므로 펼치지 않음 (단, 토글 상태는 반영)
                 if (currentAppMode === 'simple' && sec.id === 'settings-section' && isHidden) {
-                     sectionElement.classList.remove('hidden'); // 섹션 자체는 열리도록 CSS 제어
+                     sectionElement.classList.remove('hidden'); 
                 } else if (currentAppMode === 'simple' && sec.id === 'settings-section' && !isHidden) {
                      sectionElement.classList.add('hidden');
                 } else {
@@ -464,19 +497,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 sec.button.setAttribute('aria-expanded', !sectionElement.classList.contains('hidden'));
                 sectionElement.setAttribute('aria-hidden', sectionElement.classList.contains('hidden'));
                 
-                if (!sectionElement.classList.contains('hidden')) { // 섹션이 열릴 때 (내용이 보이든 안보이든)
+                if (!sectionElement.classList.contains('hidden')) { 
                     sec.button.classList.add('active');
                     sectionOpenedName = sec.baseText;
                     if (sec.id === 'history-section') renderHistory();
                     if (sec.id === 'stats-section') { 
                         updateStats(); 
-                        if (currentAppMode === 'pro') renderStatsVisuals(); 
+                        if (currentAppMode === 'focus') renderStatsVisuals(); 
                     }
-                } else { // 섹션이 닫힐 때
+                } else { 
                     sec.button.classList.remove('active');
                     sectionOpenedName = "";
                 }
-            } else { // 다른 섹션들
+            } else { 
                 if (!sectionElement.classList.contains('hidden')) {
                     sectionElement.classList.add('hidden');
                     sec.button.textContent = sec.baseText;
@@ -630,7 +663,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const shareUrl = window.location.href;
-    function getShareText() { return `오늘 가장 중요한 ${MAX_TASKS_CURRENT_MODE}가지 일에 집중하세요! FocusThree와 함께! ✨`; }
+    function getShareText() { 
+        const hashtags = "#오늘할일 #집중력 #오늘셋팁";
+        return `오늘 할 일, 딱 ${MAX_TASKS_CURRENT_MODE}개만 골라서 집중 완료! 🎯 이렇게 하니 하루가 깔끔하네. (비법은 오늘셋 🤫) ${hashtags}`;
+    }
 
     copyLinkBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(shareUrl).then(() => { const originalHTML = copyLinkBtn.innerHTML; copyLinkBtn.innerHTML = '<i class="fas fa-check"></i> 복사 완료!'; copyLinkBtn.classList.add('copy-success'); copyLinkBtn.disabled = true; setTimeout(() => { copyLinkBtn.innerHTML = originalHTML; copyLinkBtn.classList.remove('copy-success'); copyLinkBtn.disabled = false; }, 1500); announceToScreenReader("링크가 복사되었습니다."); }).catch(err => { console.error('링크 복사 실패:', err); alert('링크 복사에 실패했습니다.'); });
@@ -642,10 +678,24 @@ document.addEventListener('DOMContentLoaded', () => {
         window.open(twitterUrl, '_blank');
     });
 
+    if (shareIncludeAdditionalCheckbox) {
+        shareIncludeAdditionalCheckbox.addEventListener('change', (e) => {
+            shareOptions.includeAdditional = e.target.checked;
+            saveState();
+        });
+    }
+    if (shareIncludeMemosCheckbox) {
+        shareIncludeMemosCheckbox.addEventListener('change', (e) => {
+            shareOptions.includeMemos = e.target.checked;
+            saveState();
+        });
+    }
+
+
     if (shareAsImageBtn) {
         shareAsImageBtn.addEventListener('click', () => {
-            if (currentAppMode === 'simple' || !html2canvas) { 
-                alert("이미지 공유는 프로 모드에서만 사용 가능합니다.");
+            if (currentAppMode === 'simple' || !html2canvas) {
+                alert("이미지 공유는 집중 모드에서만 사용 가능합니다.");
                 return;
             }
             const originalBtnText = shareAsImageBtn.innerHTML;
@@ -663,57 +713,122 @@ document.addEventListener('DOMContentLoaded', () => {
             captureArea.style.lineHeight = getComputedStyle(document.body).lineHeight;
             
             const titleEl = document.createElement('h1');
-            titleEl.textContent = "FocusThree";
-            titleEl.style.fontSize = '2em';
-            titleEl.style.fontWeight = '700';
-            titleEl.style.textAlign = 'center';
-            titleEl.style.marginBottom = '5px';
+            titleEl.textContent = "오늘셋";
+            titleEl.style.fontSize = '2em'; titleEl.style.fontWeight = '700'; titleEl.style.textAlign = 'center'; titleEl.style.marginBottom = '5px';
             captureArea.appendChild(titleEl);
 
             const dateEl = document.createElement('p');
             dateEl.textContent = currentDateEl.textContent;
-            dateEl.style.fontSize = '0.9em';
-            dateEl.style.textAlign = 'center';
-            dateEl.style.marginBottom = '15px';
+            dateEl.style.fontSize = '0.9em'; dateEl.style.textAlign = 'center'; dateEl.style.marginBottom = '15px';
             dateEl.style.color = isDarkMode ? getComputedStyle(document.documentElement).getPropertyValue('--text-color-tertiary-dark').trim() : getComputedStyle(document.documentElement).getPropertyValue('--text-color-tertiary-light').trim();
             captureArea.appendChild(dateEl);
 
-            const taskListWrapperClone = document.querySelector('.task-list-wrapper').cloneNode(true);
+            const taskListWrapperOriginal = document.querySelector('.task-list-wrapper');
+            const taskListWrapperClone = taskListWrapperOriginal.cloneNode(true);
+            
+            const taskItemsOriginal = Array.from(taskListOriginal.querySelectorAll('.task-item'));
+            const taskItemsClone = Array.from(taskListWrapperClone.querySelectorAll('.task-item'));
+
+            taskItemsOriginal.slice(0, MAX_TASKS_CURRENT_MODE).forEach((originalItem, index) => {
+                const clonedItem = taskItemsClone[index];
+                if (!clonedItem) return;
+
+                if (currentAppMode === 'focus' && shareOptions.includeMemos) {
+                    const originalMemoContainer = originalItem.querySelector('.memo-container');
+                    const clonedMemoContainer = clonedItem.querySelector('.memo-container');
+                    const originalMemoTextarea = originalItem.querySelector('.memo-container textarea');
+                    
+                    if (originalMemoContainer && clonedMemoContainer && originalMemoTextarea && originalMemoTextarea.value.trim() !== "") {
+                        clonedMemoContainer.classList.remove('hidden');
+                        const clonedMemoTextarea = clonedMemoContainer.querySelector('textarea');
+                        if (clonedMemoTextarea) {
+                             // v1.10: 실제 렌더링된 높이를 반영하기 위해 div로 대체하거나, scrollHeight 기반으로 rows 조절
+                            const memoDiv = document.createElement('div');
+                            memoDiv.style.fontSize = getComputedStyle(clonedMemoTextarea).fontSize;
+                            memoDiv.style.fontFamily = getComputedStyle(clonedMemoTextarea).fontFamily;
+                            memoDiv.style.lineHeight = getComputedStyle(clonedMemoTextarea).lineHeight;
+                            memoDiv.style.padding = getComputedStyle(clonedMemoTextarea).padding;
+                            memoDiv.style.color = getComputedStyle(clonedMemoTextarea).color;
+                            memoDiv.style.backgroundColor = getComputedStyle(clonedMemoTextarea).backgroundColor;
+                            memoDiv.style.border = getComputedStyle(clonedMemoTextarea).border;
+                            memoDiv.style.borderRadius = getComputedStyle(clonedMemoTextarea).borderRadius;
+                            memoDiv.style.whiteSpace = 'pre-wrap';
+                            memoDiv.style.wordBreak = 'break-word';
+                            memoDiv.textContent = originalMemoTextarea.value;
+                            clonedMemoContainer.replaceChild(memoDiv, clonedMemoTextarea);
+                        }
+                    } else if (clonedMemoContainer) {
+                        clonedMemoContainer.remove(); 
+                        const memoIcon = clonedItem.querySelector('.memo-icon');
+                        if(memoIcon) memoIcon.remove();
+                    }
+                } else { // 메모 미포함 또는 심플 모드
+                    clonedItem.querySelectorAll('.memo-icon, .memo-container').forEach(el => el.remove());
+                }
+            });
+            
             const clonedTaskList = taskListWrapperClone.querySelector('.task-list');
             const allClonedItems = Array.from(clonedTaskList.children);
             allClonedItems.forEach((item, index) => {
-                if (index >= MAX_TASKS_CURRENT_MODE) {
-                    item.remove();
-                } else {
-                    item.querySelectorAll('.memo-icon, .memo-container').forEach(el => el.remove());
-                }
+                if (index >= MAX_TASKS_CURRENT_MODE) item.remove();
             });
+
+
             if(taskListWrapperClone.querySelector('#all-done-message.hidden')) {
                 taskListWrapperClone.querySelector('#all-done-message').remove();
             }
-
             taskListWrapperClone.style.marginTop = '0';
             captureArea.appendChild(taskListWrapperClone);
+            
+            if (currentAppMode === 'focus' && shareOptions.includeAdditional && additionalTasks.length > 0) {
+                const additionalTasksSectionOriginal = document.getElementById('additional-tasks-section');
+                const additionalTasksSectionClone = additionalTasksSectionOriginal.cloneNode(true);
+                additionalTasksSectionClone.classList.remove('toggle-section-static', 'hidden'); 
+                additionalTasksSectionClone.querySelector('.add-additional-task').remove(); 
+                additionalTasksSectionClone.style.marginTop = '20px';
+                additionalTasksSectionClone.style.padding = '15px';
+                additionalTasksSectionClone.style.backgroundColor = isDarkMode ? getComputedStyle(document.documentElement).getPropertyValue('--additional-task-bg-dark').trim() : getComputedStyle(document.documentElement).getPropertyValue('--additional-task-bg-light').trim();
+                additionalTasksSectionClone.style.border = `1px solid ${isDarkMode ? getComputedStyle(document.documentElement).getPropertyValue('--additional-task-border-dark').trim() : getComputedStyle(document.documentElement).getPropertyValue('--additional-task-border-light').trim()}`;
+                captureArea.appendChild(additionalTasksSectionClone);
+            }
 
             const linkEl = document.createElement('p');
-            linkEl.textContent = 'focus3.vercel.app';
-            linkEl.style.fontSize = '0.8em';
-            linkEl.style.textAlign = 'center';
-            linkEl.style.marginTop = '20px';
+            linkEl.textContent = 'todayset.vercel.app'; // v1.10: 도메인 변경
+            linkEl.style.fontSize = '0.8em'; linkEl.style.textAlign = 'center'; linkEl.style.marginTop = '20px';
             linkEl.style.color = isDarkMode ? getComputedStyle(document.documentElement).getPropertyValue('--link-color-dark').trim() : getComputedStyle(document.documentElement).getPropertyValue('--link-color-light').trim();
             captureArea.appendChild(linkEl);
             
-            captureArea.style.position = 'absolute';
-            captureArea.style.left = '-9999px';
+            captureArea.style.position = 'absolute'; captureArea.style.left = '-9999px';
             document.body.appendChild(captureArea);
 
             html2canvas(captureArea, {
-                useCORS: true, scale: 2, logging: false
+                useCORS: true, scale: 2, logging: false,
+                onclone: (clonedDoc) => {
+                    const clonedTaskTextareas = Array.from(clonedDoc.querySelectorAll('.task-list-wrapper .task-item textarea'));
+                    taskItemsOriginal.slice(0, MAX_TASKS_CURRENT_MODE).forEach((originalItem, i) => {
+                        const originalTextarea = originalItem.querySelector('textarea:not(.memo-container textarea)');
+                        if (clonedTaskTextareas[i] && originalTextarea) {
+                            clonedTaskTextareas[i].value = originalTextarea.value;
+                            clonedTaskTextareas[i].style.height = "auto";
+                            clonedTaskTextareas[i].style.height = (clonedTaskTextareas[i].scrollHeight) + "px";
+                        }
+                    });
+
+                    if (currentAppMode === 'focus' && shareOptions.includeAdditional) {
+                        const originalAdditionalTaskTexts = Array.from(document.querySelectorAll('#additional-task-list .additional-task-text'));
+                        const clonedAdditionalTaskTexts = Array.from(clonedDoc.querySelectorAll('#additional-task-list .additional-task-text'));
+                        originalAdditionalTaskTexts.forEach((originalSpan, i) => {
+                            if (clonedAdditionalTaskTexts[i]) {
+                                clonedAdditionalTaskTexts[i].textContent = originalSpan.textContent;
+                            }
+                        });
+                    }
+                }
             }).then(canvas => {
                 const imageURL = canvas.toDataURL('image/png');
                 const downloadLink = document.createElement('a');
                 downloadLink.href = imageURL;
-                downloadLink.download = `FocusThree_Tasks_${getTodayDateString()}.png`;
+                downloadLink.download = `오늘셋_Tasks_${getTodayDateString()}.png`;
                 document.body.appendChild(downloadLink);
                 downloadLink.click();
                 document.body.removeChild(downloadLink);
@@ -732,34 +847,35 @@ document.addEventListener('DOMContentLoaded', () => {
     if (exportDataBtn) {
         exportDataBtn.addEventListener('click', () => {
             if (currentAppMode === 'simple') {
-                alert("데이터 관리는 프로 모드에서 사용 가능합니다.");
+                alert("데이터 관리는 집중 모드에서 사용 가능합니다.");
                 return;
             }
             const dataToExport = {
                 tasks: tasks,
                 additionalTasks: additionalTasks,
                 history: history,
-                theme: localStorage.getItem('focusThreeTheme') || 'dark',
-                proModeTaskCountSetting: proModeTaskCountSetting,
-                appMode: currentAppMode
+                theme: localStorage.getItem('oneulSetTheme') || 'dark',
+                focusTaskCountSetting: focusModeTaskCountSetting,
+                appMode: currentAppMode,
+                shareOptions: shareOptions
             };
             const dataStr = JSON.stringify(dataToExport, null, 2);
             const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            const exportFileDefaultName = `FocusThree_backup_${getTodayDateString()}.json`;
+            const exportFileDefaultName = `오늘셋_backup_${getTodayDateString()}.json`;
             let linkElement = document.createElement('a');
             linkElement.setAttribute('href', dataUri);
             linkElement.setAttribute('download', exportFileDefaultName);
             linkElement.click();
             linkElement.remove();
             const originalText = exportDataBtn.textContent;
-            exportDataBtn.textContent = "내보내기 완료!";
+            exportDataBtn.innerHTML = "내보내기 완료!";
             announceToScreenReader("데이터를 성공적으로 내보냈습니다.");
             setTimeout(() => { exportDataBtn.textContent = originalText; }, 2000);
         });
 
         importDataBtn.addEventListener('click', () => {
             if (currentAppMode === 'simple') {
-                alert("데이터 관리는 프로 모드에서 사용 가능합니다.");
+                alert("데이터 관리는 집중 모드에서 사용 가능합니다.");
                 return;
             }
             importFileInput.click();
@@ -783,14 +899,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             additionalTasks = importedData.additionalTasks || [];
                             history = importedData.history || [];
                             
-                            proModeTaskCountSetting = importedData.proModeTaskCountSetting || 3;
-                            const importedAppMode = importedData.appMode || 'pro';
+                            focusModeTaskCountSetting = importedData.focusTaskCountSetting || importedData.proModeTaskCountSetting || 3; 
                             
-                            applyAppMode(importedAppMode, true); // 모드 적용 후
-                            applyTheme(importedData.theme || 'dark'); // 테마 적용
+                            let importedAppMode = importedData.appMode || 'focus';
+                            if (importedAppMode === 'pro') importedAppMode = 'focus';
+
+                            shareOptions = importedData.shareOptions || { includeAdditional: false, includeMemos: false };
+
+                            applyAppMode(importedAppMode, true); 
+                            applyTheme(importedData.theme || 'dark'); 
                                                         
                             saveState();
-                            loadState(); // 모든 상태 다시 로드하여 UI 일관성 확보
+                            loadState(); 
                             renderTasks();
                             
                             alert("데이터를 성공적으로 가져왔습니다.");
@@ -810,14 +930,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
      document.addEventListener('keydown', (e) => {
         if ((e.altKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
-            if (currentAppMode === 'pro' && addAdditionalTaskInput) {
+            if (currentAppMode === 'focus' && addAdditionalTaskInput) {
                 e.preventDefault();
                 addAdditionalTaskInput.focus();
             }
         }
 
         if (e.key === 'Escape') {
-            if (currentAppMode === 'pro') {
+            if (currentAppMode === 'focus') {
                 const activeMemoContainer = document.querySelector('.memo-container:not(.hidden)');
                 if (activeMemoContainer) {
                     const taskItem = activeMemoContainer.closest('.task-item');
@@ -861,10 +981,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- 초기화 실행 ---
-    const initialTheme = localStorage.getItem('focusThreeTheme') || 'dark';
+    const initialTheme = localStorage.getItem('oneulSetTheme') || 'dark';
+    const taskListOriginal = document.querySelector('.task-list'); 
+    
     applyTheme(initialTheme);
     displayCurrentDate();
-    loadState(); // 여기서 모드 설정 및 MAX_TASKS_CURRENT_MODE, proModeTaskCountSetting 등 주요 상태 로드
+    loadState(); 
     renderTasks();
     
     sections.forEach(sec => {
