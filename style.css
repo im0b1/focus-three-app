@@ -1,4 +1,4 @@
-/* style.css - v1.5 */
+/* style.css - v1.10 */
 
 /* 기본 스타일 초기화 */
 * {
@@ -33,6 +33,8 @@
     --chart-grid-color-light: rgba(0, 0, 0, 0.1); --chart-font-color-light: #2c3e50;
     --stats-visual-item-bg-light: #e9ecef;
     --app-mode-toggle-bg-light: var(--button-secondary-bg-light); --app-mode-toggle-text-light: var(--button-secondary-text-light);
+    --focus-outline-color-light: var(--button-primary-bg-light);
+
 
     /* 다크 테마 */
     --bg-color-dark: #212529; --container-bg-color-dark: #2c3034; --text-color-primary-dark: #e9ecef; --text-color-secondary-dark: #ced4da; --text-color-tertiary-dark: #adb5bd; --border-color-dark: #495057; --input-focus-bg-dark: #3e444a; --input-focus-shadow-dark: rgba(13, 110, 253, 0.35); --completed-text-color-dark: #6c757d; --button-primary-bg-dark: #5dade2; --button-primary-hover-bg-dark: #4a90e2; --button-secondary-bg-dark: #495057; --button-secondary-hover-bg-dark: #5a6268; --button-secondary-text-dark: #e9ecef; --button-text-color-dark: #212529; --all-done-bg-dark: #2a3b2c; --all-done-text-dark: #a5d6a7; --section-bg-dark: #343a40; --section-border-dark: #495057; --theme-toggle-hover-bg-dark: rgba(255,255,255,0.1); --link-color-dark: #5dade2; --link-hover-color-dark: #8ecae6; --stats-content-bg-dark: #3b4148; --share-content-bg-dark: #3b4148; --share-button-bg-dark: #777; --share-button-hover-bg-dark: #999;
@@ -43,6 +45,7 @@
     --chart-grid-color-dark: rgba(255, 255, 255, 0.1); --chart-font-color-dark: #e9ecef;
     --stats-visual-item-bg-dark: #495057;
     --app-mode-toggle-bg-dark: var(--button-secondary-bg-dark); --app-mode-toggle-text-dark: var(--button-secondary-text-dark);
+    --focus-outline-color-dark: var(--button-primary-bg-dark);
 
 
     /* 기본값 설정 */
@@ -54,6 +57,7 @@
     --chart-grid-color: var(--chart-grid-color-light); --chart-font-color: var(--chart-font-color-light);
     --stats-visual-item-bg: var(--stats-visual-item-bg-light);
     --app-mode-toggle-bg: var(--app-mode-toggle-bg-light); --app-mode-toggle-text: var(--app-mode-toggle-text-light);
+    --focus-outline-color: var(--focus-outline-color-light);
 }
 body.dark-theme {
     /* 다크 테마 덮어쓰기 */
@@ -65,6 +69,7 @@ body.dark-theme {
     --chart-grid-color: var(--chart-grid-color-dark); --chart-font-color: var(--chart-font-color-dark);
     --stats-visual-item-bg: var(--stats-visual-item-bg-dark);
     --app-mode-toggle-bg: var(--app-mode-toggle-bg-dark); --app-mode-toggle-text: var(--app-mode-toggle-text-dark);
+    --focus-outline-color: var(--focus-outline-color-dark);
 }
 
 /* --- 기본 레이아웃 --- */
@@ -81,7 +86,7 @@ body {
 header {
     text-align: center; margin-bottom: 25px; padding-bottom: 10px;
 }
-.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; } 
 header h1 { color: var(--text-color-primary); margin-bottom: 0; font-size: 2em; font-weight: 700; }
 
 .header-controls { display: flex; align-items: center; gap: 8px; }
@@ -107,7 +112,7 @@ header h1 { color: var(--text-color-primary); margin-bottom: 0; font-size: 2em; 
     transition: background-color 0.2s ease, transform 0.2s ease; color: var(--text-color-primary);
 }
 #theme-toggle:hover { background: var(--theme-toggle-hover-bg); transform: scale(1.1); }
-#theme-toggle:focus-visible { outline: 2px solid var(--button-primary-bg); outline-offset: 2px; }
+#theme-toggle:focus-visible { outline: 2px solid var(--focus-outline-color); outline-offset: 2px; } /* v1.10 */
 header #current-date { font-size: 0.9em; color: var(--text-color-tertiary); margin-bottom: 8px; }
 header .subtitle { font-size: 1em; color: var(--text-color-secondary); }
 main { margin-bottom: 30px; }
@@ -136,28 +141,36 @@ main { margin-bottom: 30px; }
 .task-item-content { grid-area: content; display: flex; align-items: flex-start; }
 .memo-container { grid-area: memo; margin-top: 5px; }
 
+/* v1.10: 체크박스 크기 및 디자인 개선 */
 .custom-checkbox-label {
-    position: relative; display: inline-block; width: 20px; height: 20px;
-    cursor: pointer; margin-top: 7px;
+    position: relative; display: inline-flex; /* flex로 변경하여 내부 요소 정렬 용이 */
+    align-items: center; /* 수직 중앙 정렬 */
+    justify-content: center; /* 수평 중앙 정렬 */
+    width: 24px; height: 24px; /* 크기 증가 */
+    cursor: pointer; margin-top: 5px; /* margin-top 조정 */
 }
 .custom-checkbox-label input[type="checkbox"] { opacity: 0; width: 0; height: 0; position: absolute; }
 .custom-checkbox-span {
-    position: absolute; top: 0; left: 0; height: 20px; width: 20px;
+    position: absolute; top: 0; left: 0; height: 24px; width: 24px; /* 크기 증가 */
     background-color: transparent; border: 2px solid var(--custom-checkbox-border);
-    border-radius: 4px; transition: background-color 0.2s ease, border-color 0.2s ease;
+    border-radius: 6px; /* 좀 더 둥글게 */
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    display: flex; align-items: center; justify-content: center; /* 체크 아이콘 중앙 정렬 */
 }
 .custom-checkbox-label input[type="checkbox"]:checked ~ .custom-checkbox-span {
     background-color: var(--custom-checkbox-checked-bg); border-color: var(--custom-checkbox-checked-bg);
 }
 .custom-checkbox-span::after {
     content: ""; position: absolute; display: none; 
-    left: 6px; top: 2px; width: 5px; height: 10px;
-    border: solid var(--custom-checkbox-checkmark); border-width: 0 2.5px 2.5px 0;
-    transform: rotate(45deg);
+    left: 50%; top: 50%; /* 중앙 정렬 기준 */
+    width: 7px; height: 14px; /* 체크마크 크기 조정 */
+    border: solid var(--custom-checkbox-checkmark); border-width: 0 3px 3px 0; /* 체크마크 두께 조정 */
+    transform: translate(-50%, -60%) rotate(45deg); /* 정확한 중앙 정렬 및 각도 */
 }
 .custom-checkbox-label input[type="checkbox"]:checked ~ .custom-checkbox-span::after { display: block; }
 .custom-checkbox-label input[type="checkbox"]:focus-visible ~ .custom-checkbox-span {
-    outline: 2px solid var(--button-primary-bg); outline-offset: 2px;
+    outline: 3px solid var(--focus-outline-color); /* 포커스 아웃라인 더 명확하게 */
+    outline-offset: 2px;
 }
 
 .task-item textarea {
@@ -189,12 +202,16 @@ main { margin-bottom: 30px; }
 }
 .memo-container.hidden { display: none; }
 
+/* v1.10: "모두 달성" 메시지 애니메이션 (기존 트랜지션 유지 및 확인) */
 #all-done-message {
     text-align: center; margin-top: 25px; padding: 12px; background-color: var(--all-done-bg);
-    color: var(--all-done-text); border-radius: 6px; font-weight: 500; opacity: 0; transform: translateY(10px);
-    transition: opacity 0.4s ease, transform 0.4s ease, background-color 0.3s ease, color 0.3s ease;
+    color: var(--all-done-text); border-radius: 6px; font-weight: 500; opacity: 0; transform: translateY(20px) scale(0.95); /* 시작 상태 변경 */
+    transition: opacity 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), 
+                transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), 
+                background-color 0.3s ease, color 0.3s ease;
 }
-#all-done-message:not(.hidden) { opacity: 1; transform: translateY(0); }
+#all-done-message:not(.hidden) { opacity: 1; transform: translateY(0) scale(1); }
+
 
 /* --- 추가 과제 섹션 스타일 --- */
 #additional-tasks-section {
@@ -223,7 +240,7 @@ main { margin-bottom: 30px; }
     border-bottom: 1px dashed var(--border-color); font-size: 0.95em;
 }
 .additional-task-item:last-child { border-bottom: none; }
-.additional-task-item .custom-checkbox-label { margin-top: 2px; }
+.additional-task-item .custom-checkbox-label { margin-top: 0; } /* 체크박스 크기 변경으로 margin-top 제거 또는 조정 */
 .additional-task-text { flex-grow: 1; color: var(--text-color-secondary); word-break: break-all; }
 .additional-task-item.completed .additional-task-text {
     text-decoration: line-through; color: var(--completed-text-color);
@@ -245,7 +262,7 @@ footer { margin-top: 30px; padding-top: 20px; }
 }
 #toggle-history-btn:hover, #toggle-stats-btn:hover, #toggle-share-btn:hover, #toggle-settings-btn:hover { background-color: var(--button-secondary-hover-bg); transform: translateY(-2px); }
 #toggle-history-btn:active, #toggle-stats-btn:active, #toggle-share-btn:active, #toggle-settings-btn:active { transform: translateY(0); }
-#toggle-history-btn:focus-visible, #toggle-stats-btn:focus-visible, #toggle-share-btn:focus-visible, #toggle-settings-btn:focus-visible { outline: 2px solid var(--button-primary-bg); outline-offset: 1px; }
+#toggle-history-btn:focus-visible, #toggle-stats-btn:focus-visible, #toggle-share-btn:focus-visible, #toggle-settings-btn:focus-visible { outline: 2px solid var(--focus-outline-color); outline-offset: 1px; } /* v1.10 */
 
 #toggle-history-btn.active, #toggle-stats-btn.active, #toggle-share-btn.active, #toggle-settings-btn.active {
     background-color: var(--footer-button-active-bg); color: var(--footer-button-active-text);
@@ -255,7 +272,7 @@ footer { margin-top: 30px; padding-top: 20px; }
 .footer-support { text-align: center; margin-bottom: 15px; }
 .support-link { color: var(--link-color); text-decoration: none; font-size: 0.9em; transition: color 0.2s ease; }
 .support-link:hover { color: var(--link-hover-color); text-decoration: underline; }
-.support-link:focus-visible { outline: 2px solid var(--link-color); border-radius: 2px; }
+.support-link:focus-visible { outline: 2px solid var(--focus-outline-color); border-radius: 2px; } /* v1.10 */
 
 .toggle-section {
     background-color: var(--section-bg); border-radius: 8px; border: none; 
@@ -291,6 +308,41 @@ footer { margin-top: 30px; padding-top: 20px; }
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
+.share-options {
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: var(--container-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+.share-options h4 {
+    font-size: 1em;
+    color: var(--text-color-primary);
+    margin-bottom: 10px;
+}
+.share-options label {
+    display: flex; /* 체크박스와 텍스트 정렬 */
+    align-items: center; /* 수직 중앙 정렬 */
+    margin-bottom: 8px;
+    font-size: 0.9em;
+    color: var(--text-color-secondary);
+    cursor: pointer;
+}
+.share-options label:last-child {
+    margin-bottom: 0;
+}
+.share-options input[type="checkbox"] {
+    margin-right: 8px; /* 간격 조정 */
+    width: 18px; /* v1.10: 공유 옵션 체크박스 크기 */
+    height: 18px;
+    accent-color: var(--button-primary-bg); /* 브라우저 기본 체크박스 색상 변경 */
+}
+.share-options input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--focus-outline-color); /* v1.10 */
+    outline-offset: 1px;
+}
+
+
 .share-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
 .share-buttons button, .share-buttons a {
     background-color: var(--share-button-bg); color: #fff; border: none; padding: 8px 12px;
@@ -298,7 +350,7 @@ footer { margin-top: 30px; padding-top: 20px; }
     display: inline-flex; align-items: center; gap: 6px; transition: background-color 0.2s ease, transform 0.2s ease;
 }
 .share-buttons button:hover, .share-buttons a:hover { background-color: var(--share-button-hover-bg); transform: translateY(-1px); }
-.share-buttons button:focus-visible, .share-buttons a:focus-visible { outline: 2px solid var(--link-color); outline-offset: 1px; }
+.share-buttons button:focus-visible, .share-buttons a:focus-visible { outline: 2px solid var(--focus-outline-color); outline-offset: 1px; } /* v1.10 */
 .share-buttons button i, .share-buttons a i { font-size: 1.1em; }
 .copy-success { background-color: #2ecc71 !important; transform: translateY(-1px); }
 #share-as-image-btn i.fa-spinner { animation: fa-spin 1s infinite linear; }
@@ -335,7 +387,8 @@ body.simple-mode .stats-visuals,
 body.simple-mode #share-as-image-btn-container,
 body.simple-mode .memo-icon,
 body.simple-mode .memo-container,
-body.simple-mode #settings-section .settings-content {
+body.simple-mode #settings-section .settings-content,
+body.simple-mode .share-options {
     display: none !important;
 }
 body.simple-mode #settings-section .simple-mode-settings-info {
@@ -344,8 +397,11 @@ body.simple-mode #settings-section .simple-mode-settings-info {
     color: var(--text-color-tertiary);
     padding: 10px 0;
 }
-body.pro-mode #settings-section .simple-mode-settings-info {
+body.focus-mode #settings-section .simple-mode-settings-info {
     display: none !important;
+}
+body.focus-mode .share-options { 
+    display: block !important;
 }
 body.simple-mode .task-item {
     grid-template-areas: "check content";
@@ -357,9 +413,9 @@ body.simple-mode .task-item {
     .container { padding: 20px 15px; max-width: 100%;}
     header { margin-bottom: 20px; }
     header h1 { font-size: 1.7em; }
-    .header-controls { gap: 6px; flex-wrap: wrap; justify-content: center; } /* 정렬 수정 */
-    .task-count-setting { order: 2; } /* 순서 변경 */
-    #app-mode-toggle { order: 1; margin-bottom: 8px; width: auto; padding: 5px 10px; } /* 너비 auto, 패딩 조정 */
+    .header-controls { gap: 6px; flex-wrap: wrap; justify-content: center; } 
+    .task-count-setting { order: 2; } 
+    #app-mode-toggle { order: 1; margin-bottom: 8px; width: auto; padding: 5px 10px; } 
     #theme-toggle { order: 3; font-size: 1.3em; width: 36px; height: 36px; }
 
     header #current-date { font-size: 0.85em; }
@@ -370,9 +426,11 @@ body.simple-mode .task-item {
 
     main { margin-bottom: 25px; }
     .task-item { padding: 10px 0; gap: 0 10px; } 
-    .custom-checkbox-label { width: 18px; height: 18px; margin-top: 7px;}
-    .custom-checkbox-span { width: 18px; height: 18px; }
-    .custom-checkbox-span::after { left: 5px; top: 1px; width: 4px; height: 8px; border-width: 0 2px 2px 0;}
+    /* v1.10: 모바일에서도 체크박스 크기 반영되도록 함 (기존 모바일 크기 스타일 제거 또는 수정) */
+    .custom-checkbox-label { width: 22px; height: 22px; margin-top: 4px; } /* 모바일 크기 미세 조정 */
+    .custom-checkbox-span { width: 22px; height: 22px; }
+    .custom-checkbox-span::after { width: 6px; height: 12px; border-width: 0 2.5px 2.5px 0; }
+    
     .task-item textarea { font-size: 0.95em; min-height: 28px; padding: 7px 5px; }
     .memo-icon { padding: 7px; font-size: 0.95em; }
     .memo-container textarea { font-size: 0.85em; padding: 5px 7px;}
@@ -393,8 +451,23 @@ body.simple-mode .task-item {
     .stats-visuals h4 { font-size: 0.95em; }
     .stats-visuals p { font-size: 1em; }
     .chart-container { height: 200px; }
+    
+    .share-options h4 { font-size: 0.95em; }
+    .share-options label { font-size: 0.85em; }
+    .share-options input[type="checkbox"] { width: 16px; height: 16px; margin-right: 6px; }
+
 
     .share-buttons button, .share-buttons a { padding: 7px 10px; font-size: 0.85em; }
     .settings-description { font-size: 0.85em; }
     .data-management-buttons button { font-size: 0.85em; padding: 7px 10px; }
+}
+
+/* 이미지 캡처용 임시 스타일 (JS에서 동적으로 클래스 추가하여 사용 가능) */
+.for-capture .memo-container:not(.hidden) textarea {
+    white-space: pre-wrap; /* 줄바꿈 및 공백 유지 */
+    overflow-wrap: break-word; /* 단어 단위 줄바꿈 */
+    border: none !important; /* 캡처 시 테두리 제거 */
+    background-color: transparent !important; /* 캡처 시 배경 투명 */
+    box-shadow: none !important; /* 캡처 시 그림자 제거 */
+    padding: 0 !important; /* 캡처 시 패딩 제거 */
 }
