@@ -1,4 +1,4 @@
-// script.js - v1.10
+// script.js - v1.11-pwa
 document.addEventListener('DOMContentLoaded', () => {
     // --- 요소 가져오기 ---
     const appModeToggle = document.getElementById('app-mode-toggle');
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let additionalTasks = [];
     let history = [];
     let achievementChart = null;
-    let currentAppMode = 'simple'; 
+    let currentAppMode = 'simple';
     let focusModeTaskCountSetting = 3;
     let shareOptions = {
         includeAdditional: false,
@@ -71,13 +71,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- PWA: 서비스 워커 등록 ---
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => {
+                    console.log('Service Worker registered: ', registration);
+                })
+                .catch(registrationError => {
+                    console.error('Service Worker registration failed: ', registrationError);
+                });
+        });
+    }
+
     // --- 모드 관리 ---
     function applyAppMode(mode, isInitialLoad = false) {
         currentAppMode = mode;
         localStorage.setItem('oneulSetMode', mode);
         document.body.classList.toggle('simple-mode', mode === 'simple');
-        document.body.classList.toggle('focus-mode', mode === 'focus'); 
-        
+        document.body.classList.toggle('focus-mode', mode === 'focus');
+
         const modeToSwitchToText = mode === 'simple' ? '집중' : '심플';
         appModeToggle.textContent = `${modeToSwitchToText} 모드로 전환`;
         appModeToggle.setAttribute('aria-label', `${modeToSwitchToText} 모드로 전환`);
@@ -104,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleSettingsBtn.setAttribute('aria-expanded', 'false');
                 settingsSection.setAttribute('aria-hidden', 'true');
             }
-        } else { // focus mode 
+        } else { // focus mode
             MAX_TASKS_CURRENT_MODE = focusModeTaskCountSetting;
             taskCountSelectorContainer.classList.remove('hidden');
             additionalTasksSection.classList.remove('hidden');
@@ -117,10 +130,10 @@ document.addEventListener('DOMContentLoaded', () => {
         while (tasks.length < 5) {
             tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });
         }
-        
+
         renderTasks();
         if (currentAppMode === 'focus') renderAdditionalTasks();
-        else if (additionalTaskListDiv) additionalTaskListDiv.innerHTML = ''; 
+        else if (additionalTaskListDiv) additionalTaskListDiv.innerHTML = '';
 
         if (!isInitialLoad) {
             saveState();
@@ -133,10 +146,21 @@ document.addEventListener('DOMContentLoaded', () => {
         applyAppMode(newMode);
     });
 
+    // --- PWA: 테마 변경 시 theme-color 메타 태그 업데이트 ---
+    function updateThemeColorMeta(theme) {
+        let color = '#5dade2'; // 다크 테마 기본 (manifest.json과 일치)
+        if (theme === 'light') {
+            color = '#3498db'; // 라이트 테마 버튼 색
+        }
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
+    }
+
+
     // --- 테마 관리 ---
     function applyTheme(theme) {
         if (theme === 'dark') { document.body.classList.add('dark-theme'); themeToggleButton.textContent = '☀️'; localStorage.setItem('oneulSetTheme', 'dark'); }
         else { document.body.classList.remove('dark-theme'); themeToggleButton.textContent = '🌙'; localStorage.setItem('oneulSetTheme', 'light'); }
+        updateThemeColorMeta(theme); // PWA theme-color 업데이트
         if (achievementChart) achievementChart.destroy(); achievementChart = null;
         if (currentAppMode === 'focus') renderStatsVisuals();
     }
@@ -146,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         applyTheme(newTheme);
         announceToScreenReader(`테마가 ${newTheme === 'dark' ? '다크' : '라이트'} 모드로 변경되었습니다.`);
     });
-    
+
     // --- 날짜 및 유틸리티 ---
     function getTodayDateString() { const today = new Date(); return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`; }
     function displayCurrentDate() { const today = new Date(); const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }; currentDateEl.textContent = today.toLocaleDateString('ko-KR', options); }
@@ -166,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadState() {
         const savedAppMode = localStorage.getItem('oneulSetMode') || 'simple';
-        
+
         const storedFocusTaskCount = localStorage.getItem('oneulSetFocusTaskCountSetting');
         if (storedFocusTaskCount) {
             focusModeTaskCountSetting = parseInt(storedFocusTaskCount, 10);
@@ -194,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const todayDateStr = getTodayDateString();
 
         if (storedHistory) { try { history = JSON.parse(storedHistory); if (!Array.isArray(history)) history = []; } catch (e) { history = []; } }
-        
+
         if (currentAppMode === 'focus' && storedAdditionalTasks) {
             try { additionalTasks = JSON.parse(storedAdditionalTasks); if(!Array.isArray(additionalTasks)) additionalTasks = []; } catch (e) { additionalTasks = [];}
         } else {
@@ -202,26 +226,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (storedLastDate === todayDateStr && storedTasks) {
-            try { 
-                tasks = JSON.parse(storedTasks); 
+            try {
+                tasks = JSON.parse(storedTasks);
                 if (!Array.isArray(tasks)) initializeTasks();
                 while(tasks.length < 5) {
                     tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });
                 }
-                 if(tasks.length > 5) tasks = tasks.slice(0,5); 
+                 if(tasks.length > 5) tasks = tasks.slice(0,5);
             } catch (e) { initializeTasks(); }
         } else {
             if (storedTasks && storedLastDate) {
                 try {
                     const yesterdayTasksData = JSON.parse(storedTasks);
                     const yesterdayFocusModeTaskCount = parseInt(localStorage.getItem('oneulSetFocusTaskCountSettingBeforeReset') || focusModeTaskCountSetting, 10);
-                    
+
                     if (Array.isArray(yesterdayTasksData)) {
                         const relevantYesterdayTasks = yesterdayTasksData.slice(0, yesterdayFocusModeTaskCount);
                         const allYesterdayTasksFilled = relevantYesterdayTasks.every(task => task && typeof task.text === 'string' && task.text.trim() !== "");
                         const allYesterdayTasksCompleted = relevantYesterdayTasks.every(task => task && task.completed);
                         const yesterdayAchieved = allYesterdayTasksFilled && relevantYesterdayTasks.length === yesterdayFocusModeTaskCount && allYesterdayTasksCompleted && yesterdayFocusModeTaskCount > 0;
-                        
+
                         if (!history.some(entry => entry.date === storedLastDate)) {
                             history.unshift({ date: storedLastDate, tasks: relevantYesterdayTasks, achieved: yesterdayAchieved });
                             if (history.length > 60) history.splice(60);
@@ -231,26 +255,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             localStorage.setItem('oneulSetFocusTaskCountSettingBeforeReset', focusModeTaskCountSetting.toString());
             initializeTasks();
-            if (currentAppMode === 'focus') additionalTasks = []; 
+            if (currentAppMode === 'focus') additionalTasks = [];
             saveState();
         }
-        
+
         while (tasks.length < 5) {
             tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });
         }
         if (tasks.length > 5) {
             tasks = tasks.slice(0, 5);
         }
-        
+
         updateStats();
         if (currentAppMode === 'focus') renderStatsVisuals();
         if (currentAppMode === 'focus') renderAdditionalTasks();
 
-        setTimeout(() => { 
+        setTimeout(() => {
             const firstTaskTextarea = taskListDiv.querySelector('.task-item:first-child textarea');
             if (firstTaskTextarea && window.innerWidth > 768) {
                 if (document.activeElement === document.body || document.activeElement === null) {
-                   firstTaskTextarea.focus();
+                   // firstTaskTextarea.focus(); // PWA 설치 시 자동 포커스 방지될 수 있으므로 주석 또는 조건부 처리
                 }
             }
         }, 100);
@@ -262,14 +286,14 @@ document.addEventListener('DOMContentLoaded', () => {
             tasks.push({ id: Date.now() + i + Math.random(), text: '', completed: false, memo: '' });
         }
     }
-    
+
     taskCountSelector.addEventListener('change', (e) => {
         if (currentAppMode === 'simple') return;
         const newCount = parseInt(e.target.value, 10);
         const oldCountDisplay = MAX_TASKS_CURRENT_MODE;
-        focusModeTaskCountSetting = newCount; 
+        focusModeTaskCountSetting = newCount;
         MAX_TASKS_CURRENT_MODE = newCount;
-        
+
         renderTasks();
         saveState();
         announceToScreenReader(`핵심 할 일 개수가 ${oldCountDisplay}개에서 ${newCount}개로 변경되었습니다.`);
@@ -317,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
             textareaField.addEventListener('input', (e) => { tasks[originalTaskIndex].text = e.target.value; autoGrowTextarea(e.target); });
             textareaField.addEventListener('blur', () => { saveState(); });
             textareaField.addEventListener('focus', (e) => { autoGrowTextarea(e.target); });
-            
+
             taskContentDiv.appendChild(textareaField);
 
             if (currentAppMode === 'focus') {
@@ -327,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 memoIcon.setAttribute('aria-label', `할 일 ${index + 1} 메모 보기/숨기기`);
                 memoIcon.setAttribute('aria-expanded', 'false');
                 taskContentDiv.appendChild(memoIcon);
-                
+
                 const memoContainer = document.createElement('div');
                 memoContainer.classList.add('memo-container', 'hidden');
                 const memoTextarea = document.createElement('textarea');
@@ -345,8 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     memoIcon.setAttribute('aria-expanded', !isHidden);
                     if(!isHidden) memoTextarea.focus();
                     else textareaField.focus();
-                    autoGrowTextarea(textareaField); // 할 일 textarea 높이도 재조정
-                    if(!isHidden) autoGrowTextarea(memoTextarea); // 메모 textarea 높이도 재조정
+                    autoGrowTextarea(textareaField);
+                    if(!isHidden) autoGrowTextarea(memoTextarea);
                 });
                 if (task.memo && task.memo.trim() !== "") {
                     memoIcon.classList.add('has-memo');
@@ -455,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
+
     const sections = [
         { id: 'history-section', button: toggleHistoryBtn, baseText: '기록' },
         { id: 'stats-section', button: toggleStatsBtn, baseText: '통계' },
@@ -486,7 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sec.id === sectionIdToToggle) {
                 const isHidden = sectionElement.classList.contains('hidden');
                 if (currentAppMode === 'simple' && sec.id === 'settings-section' && isHidden) {
-                     sectionElement.classList.remove('hidden'); 
+                     sectionElement.classList.remove('hidden');
                 } else if (currentAppMode === 'simple' && sec.id === 'settings-section' && !isHidden) {
                      sectionElement.classList.add('hidden');
                 } else {
@@ -496,20 +520,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 sec.button.textContent = sectionElement.classList.contains('hidden') ? sec.baseText : `${sec.baseText} 닫기`;
                 sec.button.setAttribute('aria-expanded', !sectionElement.classList.contains('hidden'));
                 sectionElement.setAttribute('aria-hidden', sectionElement.classList.contains('hidden'));
-                
-                if (!sectionElement.classList.contains('hidden')) { 
+
+                if (!sectionElement.classList.contains('hidden')) {
                     sec.button.classList.add('active');
                     sectionOpenedName = sec.baseText;
                     if (sec.id === 'history-section') renderHistory();
-                    if (sec.id === 'stats-section') { 
-                        updateStats(); 
-                        if (currentAppMode === 'focus') renderStatsVisuals(); 
+                    if (sec.id === 'stats-section') {
+                        updateStats();
+                        if (currentAppMode === 'focus') renderStatsVisuals();
                     }
-                } else { 
+                } else {
                     sec.button.classList.remove('active');
                     sectionOpenedName = "";
                 }
-            } else { 
+            } else {
                 if (!sectionElement.classList.contains('hidden')) {
                     sectionElement.classList.add('hidden');
                     sec.button.textContent = sec.baseText;
@@ -663,7 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const shareUrl = window.location.href;
-    function getShareText() { 
+    function getShareText() {
         const hashtags = "#오늘할일 #집중력 #오늘셋팁";
         return `오늘 할 일, 딱 ${MAX_TASKS_CURRENT_MODE}개만 골라서 집중 완료! 🎯 이렇게 하니 하루가 깔끔하네. (비법은 오늘셋 🤫) ${hashtags}`;
     }
@@ -671,7 +695,7 @@ document.addEventListener('DOMContentLoaded', () => {
     copyLinkBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(shareUrl).then(() => { const originalHTML = copyLinkBtn.innerHTML; copyLinkBtn.innerHTML = '<i class="fas fa-check"></i> 복사 완료!'; copyLinkBtn.classList.add('copy-success'); copyLinkBtn.disabled = true; setTimeout(() => { copyLinkBtn.innerHTML = originalHTML; copyLinkBtn.classList.remove('copy-success'); copyLinkBtn.disabled = false; }, 1500); announceToScreenReader("링크가 복사되었습니다."); }).catch(err => { console.error('링크 복사 실패:', err); alert('링크 복사에 실패했습니다.'); });
     });
-    
+
     shareTwitterBtn.addEventListener('click', (e) => {
         e.preventDefault();
         const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(getShareText())}&url=${encodeURIComponent(shareUrl)}`;
@@ -711,7 +735,7 @@ document.addEventListener('DOMContentLoaded', () => {
             captureArea.style.color = isDarkMode ? getComputedStyle(document.documentElement).getPropertyValue('--text-color-primary-dark').trim() : getComputedStyle(document.documentElement).getPropertyValue('--text-color-primary-light').trim();
             captureArea.style.fontFamily = getComputedStyle(document.body).fontFamily;
             captureArea.style.lineHeight = getComputedStyle(document.body).lineHeight;
-            
+
             const titleEl = document.createElement('h1');
             titleEl.textContent = "오늘셋";
             titleEl.style.fontSize = '2em'; titleEl.style.fontWeight = '700'; titleEl.style.textAlign = 'center'; titleEl.style.marginBottom = '5px';
@@ -725,7 +749,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const taskListWrapperOriginal = document.querySelector('.task-list-wrapper');
             const taskListWrapperClone = taskListWrapperOriginal.cloneNode(true);
-            
+
             const taskItemsOriginal = Array.from(taskListOriginal.querySelectorAll('.task-item'));
             const taskItemsClone = Array.from(taskListWrapperClone.querySelectorAll('.task-item'));
 
@@ -737,12 +761,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const originalMemoContainer = originalItem.querySelector('.memo-container');
                     const clonedMemoContainer = clonedItem.querySelector('.memo-container');
                     const originalMemoTextarea = originalItem.querySelector('.memo-container textarea');
-                    
+
                     if (originalMemoContainer && clonedMemoContainer && originalMemoTextarea && originalMemoTextarea.value.trim() !== "") {
                         clonedMemoContainer.classList.remove('hidden');
                         const clonedMemoTextarea = clonedMemoContainer.querySelector('textarea');
                         if (clonedMemoTextarea) {
-                             // v1.10: 실제 렌더링된 높이를 반영하기 위해 div로 대체하거나, scrollHeight 기반으로 rows 조절
                             const memoDiv = document.createElement('div');
                             memoDiv.style.fontSize = getComputedStyle(clonedMemoTextarea).fontSize;
                             memoDiv.style.fontFamily = getComputedStyle(clonedMemoTextarea).fontFamily;
@@ -758,15 +781,15 @@ document.addEventListener('DOMContentLoaded', () => {
                             clonedMemoContainer.replaceChild(memoDiv, clonedMemoTextarea);
                         }
                     } else if (clonedMemoContainer) {
-                        clonedMemoContainer.remove(); 
+                        clonedMemoContainer.remove();
                         const memoIcon = clonedItem.querySelector('.memo-icon');
                         if(memoIcon) memoIcon.remove();
                     }
-                } else { // 메모 미포함 또는 심플 모드
+                } else {
                     clonedItem.querySelectorAll('.memo-icon, .memo-container').forEach(el => el.remove());
                 }
             });
-            
+
             const clonedTaskList = taskListWrapperClone.querySelector('.task-list');
             const allClonedItems = Array.from(clonedTaskList.children);
             allClonedItems.forEach((item, index) => {
@@ -779,12 +802,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             taskListWrapperClone.style.marginTop = '0';
             captureArea.appendChild(taskListWrapperClone);
-            
+
             if (currentAppMode === 'focus' && shareOptions.includeAdditional && additionalTasks.length > 0) {
                 const additionalTasksSectionOriginal = document.getElementById('additional-tasks-section');
                 const additionalTasksSectionClone = additionalTasksSectionOriginal.cloneNode(true);
-                additionalTasksSectionClone.classList.remove('toggle-section-static', 'hidden'); 
-                additionalTasksSectionClone.querySelector('.add-additional-task').remove(); 
+                additionalTasksSectionClone.classList.remove('toggle-section-static', 'hidden');
+                additionalTasksSectionClone.querySelector('.add-additional-task').remove();
                 additionalTasksSectionClone.style.marginTop = '20px';
                 additionalTasksSectionClone.style.padding = '15px';
                 additionalTasksSectionClone.style.backgroundColor = isDarkMode ? getComputedStyle(document.documentElement).getPropertyValue('--additional-task-bg-dark').trim() : getComputedStyle(document.documentElement).getPropertyValue('--additional-task-bg-light').trim();
@@ -793,11 +816,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const linkEl = document.createElement('p');
-            linkEl.textContent = 'todayset.vercel.app'; // v1.10: 도메인 변경
+            linkEl.textContent = 'todayset.vercel.app';
             linkEl.style.fontSize = '0.8em'; linkEl.style.textAlign = 'center'; linkEl.style.marginTop = '20px';
             linkEl.style.color = isDarkMode ? getComputedStyle(document.documentElement).getPropertyValue('--link-color-dark').trim() : getComputedStyle(document.documentElement).getPropertyValue('--link-color-light').trim();
             captureArea.appendChild(linkEl);
-            
+
             captureArea.style.position = 'absolute'; captureArea.style.left = '-9999px';
             document.body.appendChild(captureArea);
 
@@ -898,21 +921,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             additionalTasks = importedData.additionalTasks || [];
                             history = importedData.history || [];
-                            
-                            focusModeTaskCountSetting = importedData.focusTaskCountSetting || importedData.proModeTaskCountSetting || 3; 
-                            
+
+                            focusModeTaskCountSetting = importedData.focusTaskCountSetting || importedData.proModeTaskCountSetting || 3;
+
                             let importedAppMode = importedData.appMode || 'focus';
                             if (importedAppMode === 'pro') importedAppMode = 'focus';
 
                             shareOptions = importedData.shareOptions || { includeAdditional: false, includeMemos: false };
 
-                            applyAppMode(importedAppMode, true); 
-                            applyTheme(importedData.theme || 'dark'); 
-                                                        
+                            applyAppMode(importedAppMode, true);
+                            applyTheme(importedData.theme || 'dark');
+
                             saveState();
-                            loadState(); 
-                            renderTasks();
-                            
+                            loadState(); // 다시 로드하여 UI에 완전히 반영
+                            renderTasks(); // PWA 초기 로드 시 renderTasks가 loadState 내부에서 호출되지만, 명시적 호출로 확실히.
+
                             alert("데이터를 성공적으로 가져왔습니다.");
                             announceToScreenReader("데이터를 성공적으로 가져왔습니다.");
                         }
@@ -942,7 +965,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (activeMemoContainer) {
                     const taskItem = activeMemoContainer.closest('.task-item');
                     const memoIcon = taskItem?.querySelector('.memo-icon');
-                    memoIcon?.click(); 
+                    memoIcon?.click();
                 }
                 if (document.activeElement === addAdditionalTaskInput) {
                     addAdditionalTaskInput.blur();
@@ -950,7 +973,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        if (document.activeElement.closest('.task-list')) {
+        if (document.activeElement?.closest('.task-list')) {
             const currentTaskItem = document.activeElement.closest('.task-item');
             if (!currentTaskItem) return;
 
@@ -982,13 +1005,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 초기화 실행 ---
     const initialTheme = localStorage.getItem('oneulSetTheme') || 'dark';
-    const taskListOriginal = document.querySelector('.task-list'); 
-    
-    applyTheme(initialTheme);
+    const taskListOriginal = document.querySelector('.task-list');
+
+    applyTheme(initialTheme); // 테마 먼저 적용 (PWA theme-color 때문)
     displayCurrentDate();
-    loadState(); 
-    renderTasks();
-    
+    loadState();
+    renderTasks(); // loadState에서 이미 렌더링 하지만, 초기화 순서상 명시
+
     sections.forEach(sec => {
         if(sec.button) sec.button.textContent = sec.baseText;
         const sectionElement = document.getElementById(sec.id);
