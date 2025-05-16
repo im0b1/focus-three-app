@@ -1,29 +1,32 @@
-// sw.js - v1.11-pwa
+// sw.js - v2.0.0-firebase-auth-sync
 
-const CACHE_NAME = 'oneulset-cache-v1.11'; // 캐시 이름 (앱 버전과 일치 권장)
+const CACHE_NAME = 'oneulset-cache-v2.0.0'; // 캐시 이름 업데이트
 const urlsToCache = [
   '/',
   '/index.html',
   '/style.css',
   '/script.js',
   '/manifest.json',
-  '/icons/icon-192x192.png', // 실제 아이콘 경로로 수정
-  '/icons/icon-512x512.png', // 실제 아이콘 경로로 수정
-  'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
-  'https://cdn.jsdelivr.net/npm/chart.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
-  // 추가적인 정적 에셋이 있다면 여기에 추가
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
+  '<https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap>',
+  '<https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css>',
+  '<https://cdn.jsdelivr.net/npm/chart.js>',
+  '<https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js>',
+  // Firebase SDK는 네트워크 우선 또는 캐시하지 않도록 처리할 수도 있으나, PWA 오프라인 기본 작동을 위해 포함
+  '<https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js>',
+  '<https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js>',
+  '<https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js>'
 ];
 
-// 서비스 워커 설치
+// 서비스 워커 설치 (self.skipWaiting() 추가)
 self.addEventListener('install', (event) => {
   console.log('[Service Worker] Install');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('[Service Worker] Caching app shell');
-        return cache.addAll(urlsToCache);
+        return cache.addAll(urlsToCache.map(url => new Request(url, {cache: 'reload'}))); // 항상 네트워크에서 최신 파일로 캐싱 시도
       })
       .then(() => {
         return self.skipWaiting(); // 새 서비스워커 즉시 활성화
@@ -34,7 +37,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 서비스 워커 활성화 및 이전 캐시 정리
+// 서비스 워커 활성화 및 이전 캐시 정리 (self.clients.claim() 추가)
 self.addEventListener('activate', (event) => {
   console.log('[Service Worker] Activate');
   event.waitUntil(
@@ -55,31 +58,28 @@ self.addEventListener('activate', (event) => {
 
 // 네트워크 요청 가로채기 (Fetch 이벤트)
 self.addEventListener('fetch', (event) => {
-  // POST 요청이나 API 요청 등은 캐시하지 않도록 예외 처리 (현재 앱에는 해당사항 적음)
+  // Firebase Firestore 요청은 네트워크를 우선하도록 처리 (실시간 데이터 동기화 중요)
+  // 또는 아예 가로채지 않도록 할 수도 있음
+  if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('firebaseauth.googleapis.com')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   if (event.request.method !== 'GET') {
     return;
   }
 
-  // Cache First 전략
   event.respondWith(
     caches.match(event.request)
       .then((cachedResponse) => {
         if (cachedResponse) {
-          // console.log('[Service Worker] Serving from cache:', event.request.url);
           return cachedResponse;
         }
-
-        // console.log('[Service Worker] Fetching from network:', event.request.url);
         return fetch(event.request).then(
           (networkResponse) => {
-            // 유효한 응답인지 확인
-            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'opaque' && !urlsToCache.includes(event.request.url)) {
-                // opaque 응답은 내용을 알 수 없으므로, 명시적으로 캐싱하려는 외부 리소스가 아니면 캐싱하지 않음
-                // (예: Google Fonts CSS는 type 'basic', 폰트 파일은 'cors' 또는 'opaque'일 수 있음)
+            if (!networkResponse || networkResponse.status !== 200 || (networkResponse.type === 'opaque' && !urlsToCache.includes(event.request.url))) {
                 return networkResponse;
             }
-
-
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME)
               .then((cache) => {
@@ -88,9 +88,11 @@ self.addEventListener('fetch', (event) => {
             return networkResponse;
           }
         ).catch(error => {
-          console.error('[Service Worker] Fetch failed:', error);
-          // 오프라인 대체 페이지를 보여줄 수 있음 (선택 사항)
-          // return caches.match('/offline.html');
+          console.error('[Service Worker] Fetch failed:', error, event.request.url);
+          // 오프라인 페이지 제공 (선택 사항)
+          // if (event.request.mode === 'navigate') {
+          //   return caches.match('/offline.html');
+          // }
         });
       })
   );
