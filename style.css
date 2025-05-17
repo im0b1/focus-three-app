@@ -1,4 +1,4 @@
-/* style.css - v2.0.0-firebase */
+/* style.css - v2.0.1-firebase */
 
 /* 기본 스타일 초기화 */
 * {
@@ -44,7 +44,7 @@
     --additional-task-bg-dark: #373c40; --additional-task-border-dark: #454b50;
     --chart-grid-color-dark: rgba(255, 255, 255, 0.1); --chart-font-color-dark: #e9ecef;
     --stats-visual-item-bg-dark: #495057;
-    --app-mode-toggle-bg-dark: var(--app-mode-toggle-bg-dark); --app-mode-toggle-text-dark: var(--app-mode-toggle-text-dark);
+    --app-mode-toggle-bg-dark: var(--button-secondary-bg-dark); --app-mode-toggle-text-dark: var(--button-secondary-text-dark); /* 수정: 다크모드 토글 버튼 색상 */
     --focus-outline-color-dark: var(--button-primary-bg-dark);
 
 
@@ -75,16 +75,16 @@ body.dark-theme {
 /* --- 기본 레이아웃 --- */
 body {
     font-family: var(--font-family-base); background-color: var(--bg-color); color: var(--text-color-secondary);
-    line-height: 1.6; display: flex; justify-content: center; align-items: flex-start; /* align-items: center; 에서 변경 */
+    line-height: 1.6; display: flex; justify-content: center; align-items: flex-start;
     min-height: 100vh; padding: 20px; transition: background-color 0.3s ease, color 0.3s ease;
-    overflow-y: auto; /* 모달이 길어질 경우 대비 */
+    overflow-y: auto;
 }
 .container {
     background-color: var(--container-bg-color); padding: 25px 30px; border-radius: 12px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); width: 100%; max-width: 600px;
     transition: background-color 0.3s ease;
 }
-.container.hidden { display: none; } /* 로그인 전 숨김 */
+.container.hidden { display: none !important; } /* JS에서 토글 */
 
 header {
     text-align: center; margin-bottom: 25px; padding-bottom: 10px;
@@ -93,6 +93,24 @@ header {
 header h1 { color: var(--text-color-primary); margin-bottom: 0; font-size: 2em; font-weight: 700; }
 
 .header-controls { display: flex; align-items: center; gap: 8px; }
+/* 헤더 사용자 프로필 */
+#user-profile {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.85em; color: var(--text-color-secondary);
+}
+#user-profile.hidden { display: none !important; } /* JS에서 토글 */
+#user-email-display {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#logout-btn {
+    background: none; border: none; color: var(--text-color-tertiary);
+    font-size: 1.2em; cursor: pointer; padding: 5px; border-radius: 4px;
+}
+#logout-btn:hover { color: var(--text-color-primary); background-color: var(--button-secondary-hover-bg); }
+
 .task-count-setting select {
     padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border-color);
     background-color: var(--container-bg-color); color: var(--text-color-secondary);
@@ -201,7 +219,7 @@ main { margin-bottom: 30px; }
     background-color: var(--input-focus-bg); color: var(--text-color-secondary);
     resize: none; overflow-y: hidden; line-height: 1.4; min-height: 28px;
 }
-.memo-container.hidden { display: none; }
+.memo-container.hidden { display: none !important; } /* JS에서 토글 */
 
 #all-done-message {
     text-align: center; margin-top: 25px; padding: 12px; background-color: var(--all-done-bg);
@@ -285,7 +303,7 @@ footer { margin-top: 30px; padding-top: 20px; }
                 background-color 0.3s ease;
 }
 .toggle-section:not(.hidden) {
-    max-height: 1000px; /* 충분히 큰 값 */ padding-top: 20px; padding-bottom: 20px; margin-top: 15px;
+    max-height: 1200px; /* 충분히 큰 값, 모바일 고려 */ padding-top: 20px; padding-bottom: 20px; margin-top: 15px;
 }
 
 .stats-content, .share-content, .settings-content { padding: 0; }
@@ -345,7 +363,7 @@ footer { margin-top: 30px; padding-top: 20px; }
     text-align: center;
     margin-bottom: 15px;
 }
-#history-controls.hidden { display: none; }
+#history-controls.hidden { display: none !important; } /* JS에서 토글 */
 #load-more-history-btn {
     padding: 8px 15px;
     background-color: var(--button-secondary-bg);
@@ -378,7 +396,7 @@ footer { margin-top: 30px; padding-top: 20px; }
 
 .settings-description { font-size: 0.9em; color: var(--text-color-secondary); margin-bottom: 15px; line-height: 1.6; }
 .warning-text {
-    color: #e67e22; /* 주황색 계열 */
+    color: #e67e22;
     font-weight: bold;
 }
 .data-management-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -399,8 +417,9 @@ body.simple-mode .stats-visuals,
 body.simple-mode #share-as-image-btn-container,
 body.simple-mode .memo-icon,
 body.simple-mode .memo-container,
-body.simple-mode #settings-section .settings-content, /* 심플모드에서는 로컬 데이터 관리도 숨김 */
-body.simple-mode .share-options {
+body.simple-mode #settings-section .settings-content,
+body.simple-mode .share-options,
+body.simple-mode #history-controls { /* 심플모드에서 히스토리 더보기 버튼 숨김 */
     display: none !important;
 }
 body.simple-mode #settings-section .simple-mode-settings-info {
@@ -412,11 +431,14 @@ body.simple-mode #settings-section .simple-mode-settings-info {
 body.focus-mode #settings-section .simple-mode-settings-info {
     display: none !important;
 }
-body.focus-mode #settings-section .settings-content { /* 집중모드에서는 로컬 데이터 관리 보임 */
+body.focus-mode #settings-section .settings-content {
     display: block !important;
 }
 body.focus-mode .share-options {
     display: block !important;
+}
+body.focus-mode #history-controls {
+    display: block !important; /* 집중모드에서 히스토리 더보기 버튼 보임 (JS에서 내용 있을때만 최종적으로 보임) */
 }
 body.simple-mode .task-item {
     grid-template-areas: "check content";
@@ -478,7 +500,7 @@ body.simple-mode .task-item {
     margin-bottom: 10px; border: 1px solid rgba(231, 76, 60, 0.2);
     text-align: left;
 }
-.error-message.hidden { display: none; }
+.error-message.hidden { display: none !important; } /* JS에서 토글 */
 .auth-info {
     font-size: 0.8em; color: var(--text-color-tertiary); margin-top: 15px;
 }
@@ -491,7 +513,7 @@ body.simple-mode .task-item {
     display: flex; flex-direction: column; justify-content: center; align-items: center;
     z-index: 2000; color: white;
 }
-.loading-overlay.hidden { display: none; }
+.loading-overlay.hidden { display: none !important; } /* JS에서 토글 */
 .spinner {
     border: 4px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
@@ -505,48 +527,32 @@ body.simple-mode .task-item {
 .loading-overlay p { font-size: 1.1em; }
 
 
-/* 헤더 사용자 프로필 */
-#user-profile {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 0.85em; color: var(--text-color-secondary);
-}
-#user-profile.hidden { display: none; }
-#user-email-display {
-    max-width: 150px; /* 너무 길면 잘리도록 */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-#logout-btn {
-    background: none; border: none; color: var(--text-color-tertiary);
-    font-size: 1.2em; cursor: pointer; padding: 5px; border-radius: 4px;
-}
-#logout-btn:hover { color: var(--text-color-primary); background-color: var(--button-secondary-hover-bg); }
-
-
 /* --- 모바일 반응형 --- */
 @media (max-width: 640px) {
     body { padding: 10px; }
     .container { padding: 20px 15px; max-width: 100%;}
     header { margin-bottom: 20px; }
-    header h1 { font-size: 1.7em; }
-    /* 헤더 컨트롤 순서 및 정렬 변경 */
+    header h1 { font-size: 1.7em; margin-bottom: 10px; }
     .header-top {
-        flex-direction: column; /* 위아래로 쌓기 */
-        align-items: center; /* 중앙 정렬 */
+        flex-direction: column;
+        align-items: center;
     }
-    header h1 { margin-bottom: 10px; } /* 제목과 컨트롤 간격 */
     .header-controls {
-        order: 1; /* 컨트롤 그룹을 제목 위로 보내려면 필요하지만, 여기서는 제목 아래로 배치 */
-        flex-direction: row; /* 내부 요소들은 가로로 */
-        flex-wrap: wrap; /* 넘치면 다음 줄로 */
-        justify-content: center; /* 중앙 정렬 */
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
         gap: 6px;
-        width: 100%; /* 전체 너비 사용 */
+        width: 100%;
+        order: 1; /* 제목 아래로 */
     }
-    #user-profile { order: -1; margin-bottom: 8px; width: 100%; justify-content: space-between; } /* 프로필 맨 위, 양쪽 정렬 */
+    #user-profile {
+        order: -1; /* 컨트롤 그룹 내에서 가장 위로 */
+        width: 100%;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
     .task-count-setting { order: 2; }
-    #app-mode-toggle { order: 1; margin-bottom: 0; width: auto; padding: 5px 10px; } /* margin-bottom 제거 */
+    #app-mode-toggle { order: 1; margin-bottom: 0; width: auto; padding: 5px 10px; }
     #theme-toggle { order: 3; font-size: 1.3em; width: 36px; height: 36px; }
 
 
@@ -577,7 +583,7 @@ body.simple-mode .task-item {
     .footer-toggles { gap: 6px; margin-bottom: 15px; }
      #toggle-history-btn, #toggle-stats-btn, #toggle-share-btn, #toggle-settings-btn { padding: 7px 9px; font-size: 0.75em; }
 
-    .toggle-section:not(.hidden) { padding: 15px; margin-top: 10px; max-height: 1200px; /* 모바일에서 더 길어질 수 있음 */ }
+    .toggle-section:not(.hidden) { padding: 15px; margin-top: 10px; max-height: 1200px; }
     #stats-section p { font-size: 0.9em; margin-bottom: 6px; }
     .stats-visuals h4 { font-size: 0.95em; }
     .stats-visuals p { font-size: 1em; }
@@ -592,14 +598,13 @@ body.simple-mode .task-item {
     .settings-description { font-size: 0.85em; }
     .data-management-buttons button { font-size: 0.85em; padding: 7px 10px; }
 
-    /* 모바일에서 로그인 모달 너비 조정 */
     .modal-content {
-        margin: 0 15px; /* 좌우 여백 */
+        margin: 0 15px;
         padding: 25px 20px;
     }
 }
 
-/* 이미지 캡처용 임시 스타일 (JS에서 동적으로 클래스 추가하여 사용 가능) */
+/* 이미지 캡처용 임시 스타일 */
 .for-capture .memo-container:not(.hidden) textarea {
     white-space: pre-wrap;
     overflow-wrap: break-word;
