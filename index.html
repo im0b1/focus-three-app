@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>오늘셋 - 오늘의 할 일 (v2.0.0-firebase)</title>
+    <title>오늘셋 - 오늘의 할 일 (v2.0.1-firebase)</title>
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
@@ -12,6 +12,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="오늘셋">
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <link rel="icon" href="/favicon.ico"> <!-- 일반 파비콘 추가 -->
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,15 +22,15 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-    <!-- Firebase SDK (본인의 Firebase 프로젝트 설정으로 교체) -->
+    <!-- Firebase SDK (v9 compat) -->
     <script defer src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 </head>
-<body class="simple-mode dark-theme"> <!-- 기본 심플모드, 다크테마 -->
+<body class="simple-mode dark-theme"> <!-- 기본값, JS에서 Firebase 설정에 따라 덮어써짐 -->
 
     <!-- 로그인/회원가입 모달 -->
-    <div id="auth-modal" class="modal hidden">
+    <div id="auth-modal" class="modal hidden"> <!-- 초기에는 hidden -->
         <div class="modal-content">
             <h2 id="auth-title">로그인</h2>
             <form id="auth-form">
@@ -50,16 +51,16 @@
         </div>
     </div>
 
-    <div class="container hidden"> <!-- 초기에는 숨김, 로그인 후 표시 -->
+    <div class="container hidden"> <!-- 초기에는 hidden, 로그인 후 JS에서 표시 -->
         <header>
             <div class="header-top">
                 <h1>오늘셋</h1>
                 <div class="header-controls">
-                    <div id="user-profile" class="hidden">
+                    <div id="user-profile" class="hidden"> <!-- 로그인 시 JS에서 표시 -->
                         <span id="user-email-display"></span>
                         <button id="logout-btn" title="로그아웃"><i class="fas fa-sign-out-alt"></i></button>
                     </div>
-                    <div class="task-count-setting hidden">
+                    <div class="task-count-setting hidden"> <!-- 집중모드 시 JS에서 표시 -->
                         <label for="task-count-selector" class="sr-only">핵심 할 일 개수</label>
                         <select id="task-count-selector" title="핵심 할 일 개수 설정">
                             <option value="1">1개</option>
@@ -86,7 +87,7 @@
                 <p id="all-done-message" class="hidden">🎉 핵심 목표 모두 달성! 대단해요! 🎉</p>
             </div>
 
-            <section id="additional-tasks-section" class="toggle-section-static hidden">
+            <section id="additional-tasks-section" class="toggle-section-static hidden"> <!-- 집중모드 시 JS에서 표시 -->
                 <h2><i class="fas fa-stream"></i> 추가 과제</h2>
                 <div class="add-additional-task">
                     <input type="text" id="add-additional-task-input" placeholder="추가 할 일 입력 (Alt+N 또는 Ctrl+N)">
@@ -111,11 +112,11 @@
 
             <div id="history-section" class="hidden toggle-section">
                 <h2><i class="fas fa-history"></i> 지난 할 일 기록</h2>
-                <div id="history-controls" class="hidden"> <!-- 히스토리 로드 버튼 추가 -->
+                <div id="history-controls" class="hidden">
                     <button id="load-more-history-btn">더 많은 기록 불러오기</button>
                 </div>
                 <div id="history-list">
-                    <p>지난 기록이 없습니다.</p>
+                    <p>지난 기록이 없습니다.</p> <!-- JS에서 내용 채움 -->
                 </div>
             </div>
 
@@ -125,7 +126,7 @@
                     <p id="weekly-stats">지난 7일간 달성률: 계산 중...</p>
                     <p id="monthly-stats">지난 30일간 달성률: 계산 중...</p>
 
-                    <div class="stats-visuals hidden">
+                    <div class="stats-visuals hidden"> <!-- 집중모드 시 JS에서 표시 -->
                         <h4><i class="fas fa-calendar-check"></i> 연속 목표 달성</h4>
                         <p id="streak-days">계산 중...</p>
                         <h4><i class="fas fa-medal"></i> 최다 달성 요일</h4>
@@ -141,19 +142,19 @@
             <section id="share-section" class="hidden toggle-section">
                  <div class="share-content">
                     <h3><i class="fas fa-share-alt"></i> 오늘셋 공유하기</h3>
-                    <div class="share-options hidden">
+                    <div class="share-options hidden"> <!-- 집중모드 시 JS에서 표시 -->
                         <h4>이미지 공유 옵션</h4>
                         <label for="share-include-additional">
                             <input type="checkbox" id="share-include-additional"> 추가 과제 포함
                         </label>
-                        <label for="share-include-memos" id="share-include-memos-label" class="hidden">
+                        <label for="share-include-memos" id="share-include-memos-label" class="hidden"> <!-- 집중모드 시 JS에서 표시 -->
                             <input type="checkbox" id="share-include-memos"> 메모 포함
                         </label>
                     </div>
                     <div class="share-buttons">
                         <button id="copy-link-btn" title="링크 복사"><i class="fas fa-link"></i> 링크 복사</button>
                         <a href="#" id="share-twitter-btn" target="_blank" rel="noopener noreferrer" title="X(트위터)에 공유"><i class="fab fa-twitter"></i> X</a>
-                        <span id="share-as-image-btn-container" class="hidden">
+                        <span id="share-as-image-btn-container" class="hidden"> <!-- 집중모드 시 JS에서 표시 -->
                            <button id="share-as-image-btn" title="이미지로 공유"><i class="fas fa-image"></i> 이미지로 공유</button>
                         </span>
                     </div>
@@ -161,7 +162,7 @@
             </section>
 
             <section id="settings-section" class="hidden toggle-section">
-                <div class="settings-content hidden"> <!-- 데이터 관리 버튼은 로그인 사용자에게만 의미 있음 -->
+                <div class="settings-content hidden"> <!-- 집중모드 시 JS에서 표시 -->
                     <h3><i class="fas fa-cogs"></i> 데이터 관리 (로컬)</h3>
                     <p class="settings-description">
                         현재 기기의 브라우저에 저장된 데이터를 JSON 파일로 내보내거나 가져올 수 있습니다.<br>
@@ -173,12 +174,13 @@
                         <input type="file" id="import-file-input" accept=".json" style="display: none;">
                     </div>
                 </div>
-                 <p class="simple-mode-settings-info">더 많은 설정은 집중 모드에서 사용 가능합니다.</p>
+                 <p class="simple-mode-settings-info">더 많은 설정은 집중 모드에서 사용 가능합니다.</p> <!-- 심플모드 시 JS에서 토글 -->
             </section>
         </footer>
         <div id="live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
     </div>
-    <div id="loading-overlay" class="loading-overlay hidden">
+
+    <div id="loading-overlay" class="loading-overlay hidden"> <!-- JS에서 토글 -->
         <div class="spinner"></div>
         <p>데이터를 불러오는 중...</p>
     </div>
