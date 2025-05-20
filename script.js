@@ -1,8 +1,8 @@
-// script.js - v1.14.1-critical-bugfix
+// script.js - v1.13.0-firebase-auth
 document.addEventListener('DOMContentLoaded', () => {
     // --- Firebase Configuration ---
     const firebaseConfig = {
-        apiKey: "AIzaSyB54BtURvHN9YmC3HVGaClOo32zO44deu4", // 실제 키로 교체 필요
+        apiKey: "AIzaSyB54BtURvHN9YmC3HVGaClOo32zO44deu4",
         authDomain: "todayset-82fcc.firebaseapp.com",
         projectId: "todayset-82fcc",
         storageBucket: "todayset-82fcc.appspot.com",
@@ -18,54 +18,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
         if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-            console.log("Firebase object found, attempting to initialize.");
             firebaseApp = firebase.initializeApp(firebaseConfig);
-            console.log("Firebase app initialized:", firebaseApp ? 'Success' : 'Failed');
+            firebaseAuth = firebase.auth && firebase.auth();
+            firestoreDB = firebase.firestore && firebase.firestore();
 
-            if (firebase.auth) {
-                firebaseAuth = firebase.auth();
-                console.log("FirebaseAuth initialized:", firebaseAuth ? 'Success' : 'Failed');
+            if (firebaseApp && firebaseAuth && firestoreDB) {
+                console.log("Firebase SDK initialized successfully.");
+                firestoreDB.enablePersistence()
+                    .catch((err) => {
+                        if (err.code == 'failed-precondition') {
+                            console.warn("Firestore: Multiple tabs open, persistence can only be enabled in one tab at a time.");
+                        } else if (err.code == 'unimplemented') {
+                            console.warn("Firestore: The current browser does not support all of the features required to enable persistence.");
+                        } else {
+                            console.error("Firestore: enablePersistence failed", err);
+                        }
+                    });
             } else {
-                console.error("firebase.auth is undefined. Authentication will not work.");
-            }
-
-            if (firebase.firestore) {
-                firestoreDB = firebase.firestore();
-                console.log("FirestoreDB initialized:", firestoreDB ? 'Success' : 'Failed');
-
-                if (firestoreDB) {
-                    firestoreDB.enablePersistence({ synchronizeTabs: true })
-                        .then(() => console.log("Firestore persistence enabled."))
-                        .catch((err) => {
-                            if (err.code == 'failed-precondition') {
-                                console.warn("Firestore: Multiple tabs open, persistence can only be enabled in one tab at a time or synchronizeTabs must be true.");
-                            } else if (err.code == 'unimplemented') {
-                                console.warn("Firestore: The current browser does not support all of the features required to enable persistence.");
-                            } else {
-                                console.error("Firestore: enablePersistence failed", err);
-                            }
-                        });
-                }
-            } else {
-                console.error("firebase.firestore is undefined. Firestore database will not work.");
-            }
-
-            if (!firebaseApp || !firebaseAuth || !firestoreDB) {
-                console.error("One or more Firebase SDK components failed to initialize properly. App functionality may be limited.");
-                // 이 경우, 최소한의 UI라도 보여주기 위해 Firebase 의존성이 없는 로직은 계속 진행하도록 함
+                console.error("Firebase SDK components (Auth or Firestore) failed to initialize.");
             }
         } else {
-            console.error("Firebase SDK (firebase object) not loaded. Make sure Firebase scripts are included correctly in index.html before this script.");
-            // Firebase 없이 로컬 모드로만 동작하도록 유도할 수도 있음
+            console.error("Firebase SDK not loaded.");
         }
     } catch (error) {
-        console.error("CRITICAL: Error during Firebase initialization:", error);
-        // Firebase 초기화 실패 시 사용자에게 알림을 줄 수도 있음
-        // alert("Firebase 초기화에 실패했습니다. 일부 기능이 작동하지 않을 수 있습니다.");
+        console.error("Error initializing Firebase:", error);
     }
 
-    // --- 요소 가져오기 ---
-    // 모든 요소 가져오기 전에 null 체크를 하거나, optional chaining (?.) 사용 고려
+    // --- 요소 가져오기 (기존 + 인증 관련) ---
+    // ... (이전 요소들은 동일) ...
     const appModeToggle = document.getElementById('app-mode-toggle');
     const taskListDiv = document.querySelector('.task-list');
     const currentDateEl = document.getElementById('current-date');
@@ -107,6 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportDataBtn = document.getElementById('export-data-btn');
     const importDataBtn = document.getElementById('import-data-btn');
     const importFileInput = document.getElementById('import-file-input');
+
+    // Auth UI Elements
     const authStatusContainer = document.getElementById('auth-status');
     const loginBtn = document.getElementById('login-btn');
     const signupBtn = document.getElementById('signup-btn');
@@ -115,22 +97,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const cloudSyncStatusDiv = document.getElementById('cloud-sync-status');
 
     // --- 전역 변수 ---
+    // ... (이전 변수들은 동일) ...
     let MAX_TASKS_CURRENT_MODE = 3;
     let tasks = [];
     let additionalTasks = [];
     let history = [];
     let achievementChart = null;
     let currentAppMode = 'simple';
-    let currentTheme = 'dark';
     let focusModeTaskCountSetting = 3;
     let shareOptions = {
         includeAdditional: false,
         includeMemos: false
     };
     let currentUser = null;
-    let userSettingsUnsubscribe = null;
 
-    const APP_VERSION_DATA_FORMAT = "1.14.1-critical-bugfix-data"; // 버전명 수정
+    const APP_VERSION_DATA_FORMAT = "1.13.0-firebase-auth-data";
 
     // --- 유틸리티 함수 ---
     function announceToScreenReader(message) {
@@ -144,170 +125,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js')
-                .then(registration => { console.log('Service Worker registered: ', registration); })
-                .catch(registrationError => { console.error('Service Worker registration failed: ', registrationError); });
-        });
-    }
-
-    // --- Firestore Data Functions ---
-    function getUserDocRef(userId) {
-        if (!firestoreDB || !userId) {
-            console.warn("getUserDocRef: FirestoreDB or userId is not available.");
-            return null;
-        }
-        return firestoreDB.collection('users').doc(userId);
-    }
-
-    async function initializeUserSettings(userId) {
-        const userDocRef = getUserDocRef(userId);
-        if (!userDocRef) {
-            console.error("initializeUserSettings: Could not get userDocRef for", userId);
-            return;
-        }
-        try {
-            const docSnap = await userDocRef.get();
-            if (!docSnap.exists || !docSnap.data()?.appSettings) {
-                const initialSettings = {
-                    appMode: 'simple', theme: 'dark', focusTaskCount: 3,
-                    shareOptions: { includeAdditional: false, includeMemos: false },
-                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                await userDocRef.set({ appSettings: initialSettings }, { merge: true });
-                console.log("Firestore: Initial user settings created for", userId);
-            } else {
-                console.log("Firestore: User settings already exist for", userId);
-            }
-        } catch (error) {
-            console.error("Error initializing user settings in Firestore for user " + userId + ":", error);
-        }
-    }
-
-    async function loadUserSettingsFromFirestore(userId) {
-        const userDocRef = getUserDocRef(userId);
-        if (!userDocRef) return Promise.reject("User document reference not available for settings load.");
-
-        console.log("Firestore: Attempting to load user settings for", userId);
-        try {
-            const docSnap = await userDocRef.get();
-            if (docSnap.exists && docSnap.data()?.appSettings) {
-                const settings = docSnap.data().appSettings;
-                console.log("Firestore: User settings loaded:", settings);
-
-                currentAppMode = settings.appMode || 'simple';
-                currentTheme = settings.theme || 'dark';
-                focusModeTaskCountSetting = settings.focusTaskCount || 3;
-                shareOptions = settings.shareOptions || { includeAdditional: false, includeMemos: false };
-
-                localStorage.setItem('oneulSetMode', currentAppMode);
-                localStorage.setItem('oneulSetTheme', currentTheme);
-                localStorage.setItem('oneulSetFocusTaskCountSetting', focusModeTaskCountSetting.toString());
-                localStorage.setItem('oneulSetShareOptions', JSON.stringify(shareOptions));
-
-                applyTheme(currentTheme, true, 'firestore');
-                applyAppMode(currentAppMode, true, 'firestore');
-                if(taskCountSelector) taskCountSelector.value = focusModeTaskCountSetting;
-                if(shareIncludeAdditionalCheckbox) shareIncludeAdditionalCheckbox.checked = shareOptions.includeAdditional;
-                if(shareIncludeMemosCheckbox) shareIncludeMemosCheckbox.checked = shareOptions.includeMemos;
-
-                announceToScreenReader("클라우드에서 설정을 불러왔습니다.");
-                return settings;
-            } else {
-                console.log("Firestore: No settings document found for user, initializing.");
-                await initializeUserSettings(userId);
-                return loadUserSettingsFromFirestore(userId);
-            }
-        } catch (error) {
-            console.error("Error loading user settings from Firestore for " + userId + ":", error);
-            announceToScreenReader("클라우드 설정 로드 실패. 로컬 설정을 사용합니다.");
-            return Promise.reject(error);
-        }
-    }
-
-    async function saveAppSettingsToFirestore() {
-        if (!currentUser || !firestoreDB) {
-            console.warn("saveAppSettingsToFirestore: Not logged in or Firestore not available.");
-            return;
-        }
-        const userDocRef = getUserDocRef(currentUser.uid);
-        if (!userDocRef) return;
-
-        const settingsToSave = {
-            appMode: currentAppMode, theme: currentTheme,
-            focusTaskCount: focusModeTaskCountSetting, shareOptions: shareOptions,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        try {
-            await userDocRef.set({ appSettings: settingsToSave }, { merge: true });
-            console.log("Firestore: App settings saved for user", currentUser.uid);
-        } catch (error) {
-            console.error("Error saving app settings to Firestore for " + currentUser.uid + ":", error);
-            announceToScreenReader("클라우드에 설정 저장 실패.");
-        }
-    }
-
-    function listenToUserSettings(userId) {
-        if (userSettingsUnsubscribe) {
-            console.log("Unsubscribing from previous user settings listener.");
-            userSettingsUnsubscribe();
-            userSettingsUnsubscribe = null; // 명시적으로 null 할당
-        }
-
-        const userDocRef = getUserDocRef(userId);
-        if (!userDocRef) {
-            console.error("listenToUserSettings: Cannot listen, userDocRef is null for", userId);
-            return;
-        }
-
-        console.log("Setting up Firestore listener for user settings:", userId);
-        userSettingsUnsubscribe = userDocRef.onSnapshot(async (doc) => {
-            console.log("Firestore real-time update received for settings:", doc.id, doc.exists);
-            if (doc.exists && doc.data()?.appSettings) {
-                const settings = doc.data().appSettings;
-                console.log("Firestore: Realtime settings update data:", settings);
-
-                const localThemeForCompare = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
-                let settingsChanged = false;
-                if (settings.appMode !== currentAppMode) { currentAppMode = settings.appMode; settingsChanged = true; }
-                if (settings.theme !== localThemeForCompare) { currentTheme = settings.theme; settingsChanged = true; }
-                if (settings.focusTaskCount !== focusModeTaskCountSetting) { focusModeTaskCountSetting = settings.focusTaskCount; settingsChanged = true; }
-                if (JSON.stringify(settings.shareOptions) !== JSON.stringify(shareOptions)) { shareOptions = settings.shareOptions; settingsChanged = true; }
-
-                if (settingsChanged) {
-                    console.log("Firestore: Settings changed by remote, updating local state and UI.");
-                    localStorage.setItem('oneulSetMode', currentAppMode);
-                    localStorage.setItem('oneulSetTheme', currentTheme);
-                    localStorage.setItem('oneulSetFocusTaskCountSetting', focusModeTaskCountSetting.toString());
-                    localStorage.setItem('oneulSetShareOptions', JSON.stringify(shareOptions));
-
-                    applyTheme(currentTheme, true, 'firestore');
-                    applyAppMode(currentAppMode, true, 'firestore');
-                    if(taskCountSelector) taskCountSelector.value = focusModeTaskCountSetting;
-                    if(shareIncludeAdditionalCheckbox) shareIncludeAdditionalCheckbox.checked = shareOptions.includeAdditional;
-                    if(shareIncludeMemosCheckbox) shareIncludeMemosCheckbox.checked = shareOptions.includeMemos;
-
-                    renderTasks(); // 설정 변경으로 인해 UI 재렌더링
-                    if(currentAppMode === 'focus') renderAdditionalTasks();
-
-                    announceToScreenReader("클라우드 설정이 업데이트되었습니다.");
-                } else {
-                    console.log("Firestore: Realtime settings update received, but no actual change in values. Skipping UI update.");
-                }
-            } else {
-                console.log("Firestore: User settings document does not exist in real-time listener for user " + userId + ". Initializing if appropriate.");
-                // await initializeUserSettings(userId); // 여기서 다시 초기화하면 루프 발생 가능성, 로그인 시에만 처리하도록
-            }
-        }, error => {
-            console.error("Error in user settings listener for " + userId + ":", error);
+                .then(registration => {
+                    console.log('Service Worker registered: ', registration);
+                })
+                .catch(registrationError => {
+                    console.error('Service Worker registration failed: ', registrationError);
+                });
         });
     }
 
     // --- Firebase Authentication Functions ---
     async function signUpWithEmailPassword(email, password) {
-        if (!firebaseAuth) { console.error("SignUp: FirebaseAuth not available."); return; }
+        if (!firebaseAuth) return;
         try {
             const userCredential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+            // Signed in
+            // currentUser = userCredential.user; // onAuthStateChanged에서 처리
             announceToScreenReader(`회원가입 성공: ${userCredential.user.email}`);
-            await initializeUserSettings(userCredential.user.uid); // 중요: onAuthStateChanged보다 먼저 호출될 수 있도록
+            // TODO: 신규 가입자 Firestore에 기본 데이터 구조 생성 (다음 단계)
+            // await initializeUserData(userCredential.user);
         } catch (error) {
             console.error("Error signing up:", error);
             alert(`회원가입 실패: ${error.message}`);
@@ -316,11 +152,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function signInWithEmailPassword(email, password) {
-        if (!firebaseAuth) { console.error("SignIn: FirebaseAuth not available."); return; }
+        if (!firebaseAuth) return;
         try {
             const userCredential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+            // Signed in
+            // currentUser = userCredential.user; // onAuthStateChanged에서 처리
             announceToScreenReader(`로그인 성공: ${userCredential.user.email}`);
-            // onAuthStateChanged가 나머지 처리 (데이터 로드, 리스너 설정)
         } catch (error) {
             console.error("Error signing in:", error);
             alert(`로그인 실패: ${error.message}`);
@@ -329,32 +166,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function signInWithGoogle() {
-        if (!firebaseAuth) { console.error("GoogleSignIn: FirebaseAuth not available."); return; }
-        const provider = new firebase.auth.GoogleAuthProvider();
+        if (!firebaseAuth) return;
+        const provider = new firebase.auth.GoogleAuthProvider(); // compat
         try {
             const result = await firebaseAuth.signInWithPopup(provider);
+            // This gives you a Google Access Token. You can use it to access the Google API.
+            // const credential = result.credential;
+            // const token = credential.accessToken;
+            // The signed-in user info.
+            // currentUser = result.user; // onAuthStateChanged에서 처리
             announceToScreenReader(`Google 로그인 성공: ${result.user.displayName || result.user.email}`);
-            if (result.additionalUserInfo && result.additionalUserInfo.isNewUser) {
-                await initializeUserSettings(result.user.uid); // 중요: onAuthStateChanged보다 먼저 호출될 수 있도록
-            }
-            // onAuthStateChanged가 나머지 처리
+            // TODO: 신규 Google 가입자 Firestore에 기본 데이터 구조 생성 (다음 단계)
+            // if (result.additionalUserInfo.isNewUser) {
+            //    await initializeUserData(result.user);
+            // }
         } catch (error) {
             console.error("Error signing in with Google:", error);
+            // Handle Errors here.
+            // const errorCode = error.code;
+            // const errorMessage = error.message;
+            // The email of the user's account used.
+            // const email = error.email;
+            // The firebase.auth.AuthCredential type that was used.
+            // const credential = error.credential;
             alert(`Google 로그인 실패: ${error.message}`);
             announceToScreenReader(`Google 로그인 실패: ${error.message}`);
         }
     }
 
     async function signOutUser() {
-        if (!firebaseAuth) { console.error("SignOut: FirebaseAuth not available."); return; }
+        if (!firebaseAuth) return;
         try {
-            if (userSettingsUnsubscribe) {
-                console.log("Unsubscribing from user settings listener on sign out.");
-                userSettingsUnsubscribe();
-                userSettingsUnsubscribe = null;
-            }
             await firebaseAuth.signOut();
-            // onAuthStateChanged가 currentUser를 null로 하고 UI 업데이트 및 로컬 데이터 로드
+            // Sign-out successful. currentUser는 onAuthStateChanged에서 null로 설정됨
             announceToScreenReader("로그아웃 되었습니다.");
         } catch (error) {
             console.error("Error signing out:", error);
@@ -365,45 +209,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Auth UI 업데이트 함수 ---
     function updateAuthUI(user) {
-        currentUser = user; // 이 시점에서 currentUser가 설정됨
-        if (!authStatusContainer || !loginBtn || !signupBtn || !userEmailSpan || !logoutBtn || !cloudSyncStatusDiv) {
-            console.error("Auth UI elements not found. Cannot update Auth UI.");
-            return;
-        }
-        if (user) {
-            loginBtn.classList.add('hidden');
-            signupBtn.classList.add('hidden');
-            userEmailSpan.textContent = user.displayName || user.email || '사용자';
-            userEmailSpan.classList.remove('hidden');
-            logoutBtn.classList.remove('hidden');
-            cloudSyncStatusDiv.textContent = `로그인 됨 (${user.displayName || user.email}).`; // 초기 상태
-            authStatusContainer.classList.add('logged-in');
+        currentUser = user;
+        if (authStatusContainer && loginBtn && signupBtn && userEmailSpan && logoutBtn && cloudSyncStatusDiv) {
+            if (user) {
+                loginBtn.classList.add('hidden');
+                signupBtn.classList.add('hidden');
+                userEmailSpan.textContent = user.displayName || user.email || '사용자';
+                userEmailSpan.classList.remove('hidden');
+                logoutBtn.classList.remove('hidden');
+                cloudSyncStatusDiv.textContent = `로그인 됨 (${user.displayName || user.email}).`;
+                authStatusContainer.classList.add('logged-in');
+            } else {
+                loginBtn.classList.remove('hidden');
+                signupBtn.classList.remove('hidden');
+                userEmailSpan.classList.add('hidden');
+                userEmailSpan.textContent = '';
+                logoutBtn.classList.add('hidden');
+                cloudSyncStatusDiv.textContent = '로그인하여 데이터를 클라우드에 동기화하세요.';
+                authStatusContainer.classList.remove('logged-in');
+            }
         } else {
-            loginBtn.classList.remove('hidden');
-            signupBtn.classList.remove('hidden');
-            userEmailSpan.classList.add('hidden');
-            userEmailSpan.textContent = '';
-            logoutBtn.classList.add('hidden');
-            cloudSyncStatusDiv.textContent = '로그인하여 데이터를 클라우드에 동기화하세요.';
-            authStatusContainer.classList.remove('logged-in');
+            console.error("Auth UI elements not found. Check index.html");
         }
     }
 
-    // --- 모달/팝업 관련 함수 ---
+    // --- 모달/팝업 관련 함수 (간단한 버전) ---
     function createAuthModal(type) {
+        // 기존 모달이 있으면 제거
         const existingModal = document.getElementById('auth-modal');
         if (existingModal) existingModal.remove();
+
         const modal = document.createElement('div');
         modal.id = 'auth-modal';
-        modal.className = 'auth-modal';
+        modal.className = 'auth-modal'; // CSS 스타일링을 위함
+
         const modalContent = document.createElement('div');
         modalContent.className = 'auth-modal-content';
+
         const closeBtn = document.createElement('span');
         closeBtn.className = 'auth-modal-close';
         closeBtn.innerHTML = '×';
         closeBtn.onclick = () => modal.remove();
+
         const title = document.createElement('h2');
         title.textContent = type === 'login' ? '로그인' : '계정 만들기';
+
         const emailLabel = document.createElement('label');
         emailLabel.htmlFor = 'auth-email';
         emailLabel.textContent = '이메일';
@@ -411,6 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         emailInput.type = 'email';
         emailInput.id = 'auth-email';
         emailInput.required = true;
+
         const passwordLabel = document.createElement('label');
         passwordLabel.htmlFor = 'auth-password';
         passwordLabel.textContent = '비밀번호';
@@ -418,22 +269,22 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordInput.type = 'password';
         passwordInput.id = 'auth-password';
         passwordInput.required = true;
-        if (type === 'signup') passwordInput.minLength = 6;
+        if (type === 'signup') passwordInput.minLength = 6; // Firebase 기본 비밀번호 길이
+
         const submitBtn = document.createElement('button');
         submitBtn.type = 'submit';
         submitBtn.textContent = title.textContent;
+
         const googleBtn = document.createElement('button');
         googleBtn.type = 'button';
         googleBtn.id = 'google-signin-btn';
         googleBtn.innerHTML = '<i class="fab fa-google"></i> Google 계정으로 ' + (type === 'login' ? '로그인' : '시작하기');
-        googleBtn.onclick = async () => {
-            await signInWithGoogle(); // await 추가하여 완료 기다림 (선택적)
-            // onAuthStateChanged가 UI 변경 및 모달 닫힘 여부 결정.
-            // 성공 시 currentUser가 설정되고, 그에 따라 모달을 닫을지 판단 가능.
-            if (firebaseAuth && firebaseAuth.currentUser) { // 로그인 성공 시 모달 닫기
-                modal.remove();
-            }
+        googleBtn.onclick = () => {
+            signInWithGoogle();
+            modal.remove();
         };
+
+
         const form = document.createElement('form');
         form.onsubmit = async (e) => {
             e.preventDefault();
@@ -444,15 +295,16 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 await signUpWithEmailPassword(email, password);
             }
-            if (firebaseAuth && firebaseAuth.currentUser) { // 로그인/가입 성공 시 모달 닫기
-                modal.remove();
-            }
+            // 성공 여부와 관계없이 모달 닫기 (onAuthStateChanged가 UI 업데이트)
+             if (currentUser) modal.remove(); // 로그인/가입 성공 시에만 닫기 (선택적)
         };
+
         form.appendChild(emailLabel);
         form.appendChild(emailInput);
         form.appendChild(passwordLabel);
         form.appendChild(passwordInput);
         form.appendChild(submitBtn);
+
         modalContent.appendChild(closeBtn);
         modalContent.appendChild(title);
         modalContent.appendChild(form);
@@ -460,19 +312,27 @@ document.addEventListener('DOMContentLoaded', () => {
         modalContent.appendChild(googleBtn);
         modal.appendChild(modalContent);
         document.body.appendChild(modal);
-        emailInput.focus();
+
+        emailInput.focus(); // 모달 열리면 이메일 입력창에 포커스
     }
 
     // --- Auth UI 이벤트 리스너 ---
-    if (loginBtn) { loginBtn.addEventListener('click', () => createAuthModal('login')); }
-    if (signupBtn) { signupBtn.addEventListener('click', () => createAuthModal('signup')); }
-    if (logoutBtn) { logoutBtn.addEventListener('click', signOutUser); }
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => createAuthModal('login'));
+    }
+    if (signupBtn) {
+        signupBtn.addEventListener('click', () => createAuthModal('signup'));
+    }
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', signOutUser);
+    }
 
-    // --- 모드 관리 ---
-    function applyAppMode(mode, isInitialLoad = false, source = 'local') {
-        const oldAppMode = currentAppMode;
+    // --- 나머지 코드 (모드 관리, 테마, 날짜, 상태 저장/로드, 할 일 렌더링 등) ---
+    // saveState, loadState는 다음 단계에서 Firebase 연동 시 크게 수정될 예정입니다.
+    // 현재는 로컬 스토리지 기반으로 동작합니다.
+    function applyAppMode(mode, isInitialLoad = false) {
         currentAppMode = mode;
-        localStorage.setItem('oneulSetMode', currentAppMode); // 로컬에 항상 저장
+        localStorage.setItem('oneulSetMode', mode);
         document.body.classList.toggle('simple-mode', mode === 'simple');
         document.body.classList.toggle('focus-mode', mode === 'focus');
         const modeToSwitchToText = mode === 'simple' ? '집중' : '심플';
@@ -482,7 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (shareOptionsDiv) shareOptionsDiv.classList.toggle('hidden', mode === 'simple');
         if (shareIncludeMemosLabel) shareIncludeMemosLabel.classList.toggle('hidden', mode === 'simple');
-
         if (mode === 'simple') {
             MAX_TASKS_CURRENT_MODE = 3;
             if(taskCountSelectorContainer) taskCountSelectorContainer.classList.add('hidden');
@@ -498,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleSettingsBtn.setAttribute('aria-expanded', 'false');
                 settingsSection.setAttribute('aria-hidden', 'true');
             }
-        } else {
+        } else { // focus mode
             MAX_TASKS_CURRENT_MODE = focusModeTaskCountSetting;
             if(taskCountSelectorContainer) taskCountSelectorContainer.classList.remove('hidden');
             if(additionalTasksSection) additionalTasksSection.classList.remove('hidden');
@@ -507,140 +366,104 @@ document.addEventListener('DOMContentLoaded', () => {
             if (settingsContentDiv) settingsContentDiv.classList.remove('hidden');
         }
         if(taskCountSelector) taskCountSelector.value = focusModeTaskCountSetting;
-
-        if (source !== 'firestore' && oldAppMode !== currentAppMode) {
-            saveAppSettingsToFirestore();
+        while (tasks.length < 5) {
+            tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });
         }
-
-        if (!isInitialLoad || source === 'firestore') {
-            renderTasks(); // isInitialLoad=true이고 source=firestore면 UI 강제 업데이트
-            if (currentAppMode === 'focus') renderAdditionalTasks();
-            else if (additionalTaskListDiv) additionalTaskListDiv.innerHTML = '';
-        }
-
-        if (!isInitialLoad && source === 'local') {
+        renderTasks();
+        if (currentAppMode === 'focus') renderAdditionalTasks();
+        else if (additionalTaskListDiv) additionalTaskListDiv.innerHTML = '';
+        if (!isInitialLoad) {
+            saveState('local');
             announceToScreenReader(`${mode === 'simple' ? '심플' : '집중'} 모드로 변경되었습니다.`);
         }
     }
     if(appModeToggle) {
         appModeToggle.addEventListener('click', () => {
             const newMode = currentAppMode === 'simple' ? 'focus' : 'simple';
-            applyAppMode(newMode, false, 'local');
+            applyAppMode(newMode);
         });
     }
-
-    // --- 테마 관리 ---
-    function applyTheme(theme, isInitialLoad = false, source = 'local') {
-        const oldTheme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
-        currentTheme = theme;
-
+    function updateThemeColorMeta(theme) {
+        let color = '#5dade2';
+        if (theme === 'light') { color = '#3498db'; }
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeColorMeta) themeColorMeta.setAttribute('content', color);
+    }
+    function applyTheme(theme, isInitialLoad = false) {
         if (theme === 'dark') {
             document.body.classList.add('dark-theme');
             if(themeToggleButton) themeToggleButton.textContent = '☀️';
+            localStorage.setItem('oneulSetTheme', 'dark');
         } else {
             document.body.classList.remove('dark-theme');
             if(themeToggleButton) themeToggleButton.textContent = '🌙';
+            localStorage.setItem('oneulSetTheme', 'light');
         }
-        localStorage.setItem('oneulSetTheme', currentTheme);
         updateThemeColorMeta(theme);
-
         if (achievementChart) { achievementChart.destroy(); achievementChart = null; }
-        // renderStatsVisuals는 applyAppMode가 호출되면 그 안에서 처리될 수 있음.
-        // 또는, 테마 변경 시 차트 재렌더링이 항상 필요하면 여기서 호출.
         if (currentAppMode === 'focus' && dailyAchievementChartCtx) renderStatsVisuals();
-
-
-        if (source !== 'firestore' && oldTheme !== currentTheme) {
-            saveAppSettingsToFirestore();
-        }
     }
     if(themeToggleButton){
         themeToggleButton.addEventListener('click', () => {
             const isDarkMode = document.body.classList.contains('dark-theme');
             const newTheme = isDarkMode ? 'light' : 'dark';
-            applyTheme(newTheme, false, 'local');
+            applyTheme(newTheme);
             announceToScreenReader(`테마가 ${newTheme === 'dark' ? '다크' : '라이트'} 모드로 변경되었습니다.`);
         });
     }
-
-    // --- 날짜 및 유틸리티 ---
     function getTodayDateString() { const today = new Date(); return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`; }
-    function displayCurrentDate() {
-        if(currentDateEl){
-            const today = new Date();
-            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
-            currentDateEl.textContent = today.toLocaleDateString('ko-KR', options);
-        } else {
-            console.warn("currentDateEl not found for displaying date.");
-        }
-    }
+    function displayCurrentDate() { if(currentDateEl){ const today = new Date(); const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }; currentDateEl.textContent = today.toLocaleDateString('ko-KR', options); } }
     function autoGrowTextarea(element) { if(element){ element.style.height = "auto"; element.style.height = (element.scrollHeight) + "px";} }
-
-    // --- 상태 저장 및 로드 ---
     function saveState(source = 'local') {
         localStorage.setItem('oneulSetTasks', JSON.stringify(tasks));
         localStorage.setItem('oneulSetAdditionalTasks', JSON.stringify(additionalTasks));
         localStorage.setItem('oneulSetLastDate', getTodayDateString());
         localStorage.setItem('oneulSetHistory', JSON.stringify(history));
-        // 설정은 각 변경 함수에서 로컬/Firestore에 저장
         localStorage.setItem('oneulSetFocusTaskCountSetting', focusModeTaskCountSetting.toString());
         localStorage.setItem('oneulSetShareOptions', JSON.stringify(shareOptions));
-
-        updateStats(); // 통계는 항상 로컬 데이터 기반으로 업데이트
+        updateStats();
         if (currentAppMode === 'focus' && dailyAchievementChartCtx) renderStatsVisuals();
-
         if (currentUser && firestoreDB && source === 'local') {
-            // TODO: Save tasks, additionalTasks, history to Firestore
-            // console.log("TODO: Save tasks/additional/history to Firestore for user:", currentUser.uid);
+            // TODO: Firestore 저장 로직 (다음 단계)
+            // console.log("Firebase save called for user:", currentUser.uid);
         }
     }
-
-    function loadStateFromLocalStorage() {
-        console.log("Loading state from Local Storage.");
-        // 설정 관련 변수들은 이미 Firestore 로드 시도 후, 또는 onAuthStateChanged에서 초기화됨.
-        // 여기서는 주로 tasks, additionalTasks, history 등 콘텐츠 데이터 로드.
-        const lsAppMode = localStorage.getItem('oneulSetMode') || 'simple';
-        const lsTheme = localStorage.getItem('oneulSetTheme') || 'dark';
-        const lsFocusTaskCount = localStorage.getItem('oneulSetFocusTaskCountSetting');
-        const lsShareOptions = localStorage.getItem('oneulSetShareOptions');
-
-        // 전역 변수에 로컬 스토리지 값 할당 (Firestore 로드 실패 또는 로그아웃 시 대비)
-        currentAppMode = lsAppMode;
-        currentTheme = lsTheme;
-        focusModeTaskCountSetting = lsFocusTaskCount ? parseInt(lsFocusTaskCount, 10) : 3;
-        try {
-            shareOptions = lsShareOptions ? JSON.parse(lsShareOptions) : { includeAdditional: false, includeMemos: false };
-        } catch(e) {
-            console.error("Error parsing shareOptions from LS:", e);
-            shareOptions = { includeAdditional: false, includeMemos: false };
+    function loadState(source = 'local') {
+        // Firebase에서 먼저 로드하는 로직은 initializeApp의 onAuthStateChanged에서 처리
+        const savedAppMode = localStorage.getItem('oneulSetMode') || 'simple';
+        const storedFocusTaskCount = localStorage.getItem('oneulSetFocusTaskCountSetting');
+        if (storedFocusTaskCount) {
+            focusModeTaskCountSetting = parseInt(storedFocusTaskCount, 10);
+        } else {
+            focusModeTaskCountSetting = 3;
         }
-
-        // UI에 설정 반영
-        applyTheme(currentTheme, true, 'local'); // source='local'로 Firestore 쓰기 방지
-        applyAppMode(currentAppMode, true, 'local'); // source='local'로 Firestore 쓰기 방지
         if(taskCountSelector) taskCountSelector.value = focusModeTaskCountSetting;
-        if(shareIncludeAdditionalCheckbox) shareIncludeAdditionalCheckbox.checked = shareOptions.includeAdditional;
-        if(shareIncludeMemosCheckbox) shareIncludeMemosCheckbox.checked = shareOptions.includeMemos;
-
-
+        const storedShareOptions = localStorage.getItem('oneulSetShareOptions');
+        if (storedShareOptions) {
+            try {
+                shareOptions = JSON.parse(storedShareOptions);
+                if (shareIncludeAdditionalCheckbox) shareIncludeAdditionalCheckbox.checked = shareOptions.includeAdditional;
+                if (shareIncludeMemosCheckbox) shareIncludeMemosCheckbox.checked = shareOptions.includeMemos;
+            } catch (e) { console.error("Error parsing share options:", e); }
+        }
+        applyAppMode(savedAppMode, true); // UI 렌더링을 위해 먼저 실행
         const storedTasks = localStorage.getItem('oneulSetTasks');
         const storedAdditionalTasks = localStorage.getItem('oneulSetAdditionalTasks');
         const storedLastDate = localStorage.getItem('oneulSetLastDate');
         const storedHistory = localStorage.getItem('oneulSetHistory');
         const todayDateStr = getTodayDateString();
-
         if (storedHistory) { try { history = JSON.parse(storedHistory); if (!Array.isArray(history)) history = []; } catch (e) { history = []; } }
-
         if (currentAppMode === 'focus' && storedAdditionalTasks) {
             try { additionalTasks = JSON.parse(storedAdditionalTasks); if(!Array.isArray(additionalTasks)) additionalTasks = []; } catch (e) { additionalTasks = [];}
         } else {
             additionalTasks = [];
         }
-
         if (storedLastDate === todayDateStr && storedTasks) {
             try {
                 tasks = JSON.parse(storedTasks);
                 if (!Array.isArray(tasks)) initializeTasks();
+                while(tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' }); }
+                if(tasks.length > 5) tasks = tasks.slice(0,5);
             } catch (e) { initializeTasks(); }
         } else {
             if (storedTasks && storedLastDate) {
@@ -660,22 +483,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (e) { console.error("Error processing yesterday's tasks for history", e); }
             }
             localStorage.setItem('oneulSetFocusTaskCountSettingBeforeReset', focusModeTaskCountSetting.toString());
-            initializeTasks(); // 새 날짜면 tasks 초기화
-            if (currentAppMode === 'focus') additionalTasks = []; // 새 날짜면 additionalTasks 초기화
-            saveState('local'); // 초기화된 상태 로컬 저장 (Firestore 동기화는 별도)
+            initializeTasks();
+            if (currentAppMode === 'focus') additionalTasks = [];
+            saveState('local');
         }
-
-        while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
-        if (tasks.length > 5) tasks = tasks.slice(0,5);
-
-        // 최종 UI 렌더링
-        renderTasks();
-        if (currentAppMode === 'focus') renderAdditionalTasks();
-        else if (additionalTaskListDiv) additionalTaskListDiv.innerHTML = '';
+        while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' }); }
+        if (tasks.length > 5) { tasks = tasks.slice(0, 5); }
         updateStats();
         if (currentAppMode === 'focus' && dailyAchievementChartCtx) renderStatsVisuals();
-        renderHistory();
-
+        if (currentAppMode === 'focus') renderAdditionalTasks();
+        renderTasks(); // loadState 후 항상 renderTasks 호출
         setTimeout(() => {
             if (taskListDiv) {
                 const firstTaskTextarea = taskListDiv.querySelector('.task-item:first-child textarea');
@@ -685,75 +502,43 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 100);
     }
-
     function initializeTasks() {
         tasks = [];
         for (let i = 0; i < 5; i++) {
             tasks.push({ id: Date.now() + i + Math.random(), text: '', completed: false, memo: '' });
         }
     }
-
     if(taskCountSelector){
         taskCountSelector.addEventListener('change', (e) => {
             if (currentAppMode === 'simple') return;
             const newCount = parseInt(e.target.value, 10);
-            const oldFocusCount = focusModeTaskCountSetting;
             focusModeTaskCountSetting = newCount;
             MAX_TASKS_CURRENT_MODE = newCount;
-            localStorage.setItem('oneulSetFocusTaskCountSetting', focusModeTaskCountSetting.toString());
-            if (oldFocusCount !== focusModeTaskCountSetting) {
-                saveAppSettingsToFirestore();
-            }
             renderTasks();
+            saveState('local');
             announceToScreenReader(`핵심 할 일 개수가 ${newCount}개로 변경되었습니다.`);
         });
     }
-
-    if (shareIncludeAdditionalCheckbox) {
-        shareIncludeAdditionalCheckbox.addEventListener('change', (e) => {
-            const oldShareOptions = JSON.parse(JSON.stringify(shareOptions));
-            shareOptions.includeAdditional = e.target.checked;
-            localStorage.setItem('oneulSetShareOptions', JSON.stringify(shareOptions));
-            if (JSON.stringify(oldShareOptions) !== JSON.stringify(shareOptions)) {
-                saveAppSettingsToFirestore();
-            }
-        });
-    }
-    if (shareIncludeMemosCheckbox) {
-        shareIncludeMemosCheckbox.addEventListener('change', (e) => {
-            const oldShareOptions = JSON.parse(JSON.stringify(shareOptions));
-            shareOptions.includeMemos = e.target.checked;
-            localStorage.setItem('oneulSetShareOptions', JSON.stringify(shareOptions));
-            if (JSON.stringify(oldShareOptions) !== JSON.stringify(shareOptions)) {
-                saveAppSettingsToFirestore();
-            }
-        });
-    }
-
-    function renderTasks() {
-        if(!taskListDiv) { console.warn("renderTasks: taskListDiv not found."); return; }
+    function renderTasks() { /* ... 이전과 동일 ... */
+        if(!taskListDiv) return;
         taskListDiv.innerHTML = '';
         const tasksToRender = tasks.slice(0, MAX_TASKS_CURRENT_MODE);
 
         tasksToRender.forEach((task, index) => {
-            if (!task) { // task 객체 자체가 null/undefined인 경우 방지
-                console.warn(`Task at index ${index} is undefined.`);
-                return;
-            }
-            const originalTaskIndex = tasks.findIndex(t => t && t.id === task.id); // t가 null/undefined가 아닌지 확인
-            if (originalTaskIndex === -1) return;
+            const originalTaskIndex = tasks.findIndex(t => t.id === task.id);
+            if (originalTaskIndex === -1) return; // 안전 장치
 
             const taskItem = document.createElement('div');
             taskItem.classList.add('task-item');
-            if (tasks[originalTaskIndex].completed) { taskItem.classList.add('completed'); }
+            if (tasks[originalTaskIndex].completed) { taskItem.classList.add('completed'); } // 실제 tasks 배열의 completed 상태 사용
 
             const checkboxLabel = document.createElement('label');
             checkboxLabel.classList.add('custom-checkbox-label');
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.checked = tasks[originalTaskIndex].completed;
+            checkbox.checked = tasks[originalTaskIndex].completed; // 실제 tasks 배열의 completed 상태 사용
             checkbox.setAttribute('aria-label', `핵심 할 일 ${index + 1} 완료`);
-            checkbox.id = `task-checkbox-${tasks[originalTaskIndex].id}`;
+            checkbox.id = `task-checkbox-${tasks[originalTaskIndex].id}`; // 고유 ID 사용
             checkboxLabel.htmlFor = checkbox.id;
             const checkboxSpan = document.createElement('span');
             checkboxSpan.classList.add('custom-checkbox-span');
@@ -772,11 +557,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const textareaField = document.createElement('textarea');
             textareaField.rows = "1";
             textareaField.placeholder = `할 일 ${index + 1}`;
-            textareaField.value = tasks[originalTaskIndex].text;
+            textareaField.value = tasks[originalTaskIndex].text; // 실제 tasks 배열의 text 사용
             textareaField.setAttribute('aria-label', `할 일 ${index + 1} 내용`);
             textareaField.addEventListener('input', (e) => { tasks[originalTaskIndex].text = e.target.value; autoGrowTextarea(e.target); });
-            textareaField.addEventListener('blur', () => { saveState('local'); });
-            textareaField.addEventListener('focus', (e) => { autoGrowTextarea(e.target); });
+            textareaField.addEventListener('blur', () => { saveState('local'); }); // blur 시 저장
+            textareaField.addEventListener('focus', (e) => { autoGrowTextarea(e.target); }); // 포커스 시 높이 조절
 
             taskContentDiv.appendChild(textareaField);
 
@@ -793,24 +578,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const memoTextarea = document.createElement('textarea');
                 memoTextarea.rows = "1";
                 memoTextarea.placeholder = "메모 추가...";
-                memoTextarea.value = tasks[originalTaskIndex].memo || "";
+                memoTextarea.value = tasks[originalTaskIndex].memo || ""; // 실제 tasks 배열의 memo 사용
                 memoTextarea.setAttribute('aria-label', `할 일 ${index + 1} 메모 내용`);
                 memoTextarea.addEventListener('input', (e) => { tasks[originalTaskIndex].memo = e.target.value; autoGrowTextarea(e.target);});
-                memoTextarea.addEventListener('blur', () => { saveState('local'); });
+                memoTextarea.addEventListener('blur', () => { saveState('local'); }); // blur 시 저장
                 memoContainer.appendChild(memoTextarea);
-                taskItem.appendChild(memoContainer);
+                taskItem.appendChild(memoContainer); // taskItem에 memoContainer 추가
 
                 memoIcon.addEventListener('click', () => {
                     const isHidden = memoContainer.classList.toggle('hidden');
                     memoIcon.setAttribute('aria-expanded', !isHidden);
                     if(!isHidden) memoTextarea.focus();
                     else textareaField.focus();
-                    autoGrowTextarea(textareaField);
-                    if(!isHidden) autoGrowTextarea(memoTextarea);
+                    autoGrowTextarea(textareaField); // 메인 textarea 높이도 재조정
+                    if(!isHidden) autoGrowTextarea(memoTextarea); // 메모 textarea 높이도 재조정
                 });
                 if (tasks[originalTaskIndex].memo && tasks[originalTaskIndex].memo.trim() !== "") {
                     memoIcon.classList.add('has-memo');
                 }
+                // 메모 내용 변경 시 has-memo 클래스 업데이트
                 memoTextarea.addEventListener('input', (e) => {
                     tasks[originalTaskIndex].memo = e.target.value;
                     autoGrowTextarea(e.target);
@@ -821,23 +607,24 @@ document.addEventListener('DOMContentLoaded', () => {
             taskItem.appendChild(checkboxLabel);
             taskItem.appendChild(taskContentDiv);
             taskListDiv.appendChild(taskItem);
-            autoGrowTextarea(textareaField);
+            autoGrowTextarea(textareaField); // 초기 높이 조절
         });
         checkAllDone();
-    }
-
-    function checkAllDone() {
-        if(!allDoneMessageEl || !tasks) return;
+     }
+    function checkAllDone() { /* ... 이전과 동일 ... */
+        if(!allDoneMessageEl || !tasks) return; // null 체크 추가
         const tasksToCheck = tasks.slice(0, MAX_TASKS_CURRENT_MODE);
-        const filledTasks = tasksToCheck.filter(task => task && typeof task.text === 'string' && task.text.trim() !== "");
-        const completedFilledTasks = filledTasks.filter(task => task && task.completed);
-        const shouldShowMessage = filledTasks.length > 0 && filledTasks.length === MAX_TASKS_CURRENT_MODE && completedFilledTasks.length === MAX_TASKS_CURRENT_MODE;
+        // 실제 내용이 있는 할 일만 필터링
+        const filledTasks = tasksToCheck.filter(task => typeof task.text === 'string' && task.text.trim() !== "");
+        const completedFilledTasks = filledTasks.filter(task => task.completed);
+
+        // 내용이 있는 모든 핵심과제가 완료되었을 때 메시지 표시
+        const shouldShowMessage = filledTasks.length === MAX_TASKS_CURRENT_MODE && completedFilledTasks.length === MAX_TASKS_CURRENT_MODE && MAX_TASKS_CURRENT_MODE > 0;
         allDoneMessageEl.classList.toggle('hidden', !shouldShowMessage);
     }
-
-    function renderAdditionalTasks() {
+    function renderAdditionalTasks() { /* ... 이전과 동일 ... */
         if (currentAppMode === 'simple' || !additionalTaskListDiv) {
-            if(additionalTaskListDiv) additionalTaskListDiv.innerHTML = '';
+            if(additionalTaskListDiv) additionalTaskListDiv.innerHTML = ''; // 심플모드면 내용 비우기
             return;
         }
         additionalTaskListDiv.innerHTML = '';
@@ -849,108 +636,117 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         additionalTasks.forEach((task, index) => {
-            if (!task) return; // task 객체 null/undefined 방지
             const taskItem = document.createElement('div');
             taskItem.classList.add('additional-task-item');
             if (task.completed) taskItem.classList.add('completed');
+
             const checkboxLabel = document.createElement('label');
             checkboxLabel.classList.add('custom-checkbox-label');
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = task.completed;
-            checkbox.id = `additional-task-checkbox-${task.id}`;
+            checkbox.id = `additional-task-checkbox-${task.id}`; // 고유 ID 사용
             checkbox.setAttribute('aria-label', `추가 과제 "${task.text}" 완료`);
             checkboxLabel.htmlFor = checkbox.id;
             const checkboxSpan = document.createElement('span');
             checkboxSpan.classList.add('custom-checkbox-span');
+
             checkbox.addEventListener('change', () => {
-                additionalTasks[index].completed = checkbox.checked;
+                additionalTasks[index].completed = checkbox.checked; // 실제 배열 업데이트
                 taskItem.classList.toggle('completed', checkbox.checked);
                 saveState('local');
             });
             checkboxLabel.appendChild(checkbox);
             checkboxLabel.appendChild(checkboxSpan);
+
             const taskText = document.createElement('span');
             taskText.classList.add('additional-task-text');
             taskText.textContent = task.text;
+
             const deleteBtn = document.createElement('button');
             deleteBtn.classList.add('delete-additional-task-btn');
             deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
             deleteBtn.setAttribute('aria-label', `추가 과제 "${task.text}" 삭제`);
             deleteBtn.addEventListener('click', () => {
-                const taskTextToAnnounce = additionalTasks[index].text;
-                additionalTasks.splice(index, 1);
-                renderAdditionalTasks();
+                const taskTextToAnnounce = additionalTasks[index].text; // 삭제 전 텍스트 저장
+                additionalTasks.splice(index, 1); // 실제 배열에서 삭제
+                renderAdditionalTasks(); // 목록 다시 렌더링
                 saveState('local');
                 announceToScreenReader(`추가 과제 "${taskTextToAnnounce}"가 삭제되었습니다.`);
             });
+
             taskItem.appendChild(checkboxLabel);
             taskItem.appendChild(taskText);
             taskItem.appendChild(deleteBtn);
             additionalTaskListDiv.appendChild(taskItem);
         });
     }
-
-    if (addAdditionalTaskBtn && addAdditionalTaskInput) {
+    if (addAdditionalTaskBtn && addAdditionalTaskInput) { /* ... 이전과 동일 ... */
         addAdditionalTaskBtn.addEventListener('click', () => {
             if (currentAppMode === 'simple') return;
             const text = addAdditionalTaskInput.value.trim();
             if (text) {
-                additionalTasks.push({ id: Date.now(), text: text, completed: false });
+                additionalTasks.push({ id: Date.now(), text: text, completed: false }); // 고유 ID 생성
                 addAdditionalTaskInput.value = '';
                 renderAdditionalTasks();
                 saveState('local');
                 announceToScreenReader(`추가 과제 "${text}"가 추가되었습니다.`);
-                addAdditionalTaskInput.focus();
+                addAdditionalTaskInput.focus(); // 입력 후 다시 포커스
             }
         });
         addAdditionalTaskInput.addEventListener('keypress', (e) => {
             if (currentAppMode === 'simple') return;
-            if (e.key === 'Enter') { addAdditionalTaskBtn.click(); }
+            if (e.key === 'Enter') {
+                addAdditionalTaskBtn.click(); // Enter키로 추가
+            }
         });
     }
-
-    const sections = [
+    const sections = [ /* ... 이전과 동일 ... */
         { id: 'history-section', button: toggleHistoryBtn, baseText: '기록' },
         { id: 'stats-section', button: toggleStatsBtn, baseText: '통계' },
         { id: 'share-section', button: toggleShareBtn, baseText: '공유' },
         { id: 'settings-section', button: toggleSettingsBtn, baseText: '설정' }
     ];
-
-    function toggleSection(sectionIdToToggle) {
+    function toggleSection(sectionIdToToggle) { /* ... 이전과 동일 ... */
         let sectionOpenedName = "";
         sections.forEach(sec => {
-            if (!sec.button) return;
+            if (!sec.button) return; // 버튼 없으면 스킵
+
             const sectionElement = document.getElementById(sec.id);
-            if (!sectionElement) return;
+            if (!sectionElement) return; // 섹션 요소 없으면 스킵
+
+            // 모드에 따른 특정 UI 요소 표시/숨김 (토글 시 재확인)
             if (currentAppMode === 'simple') {
                 if (sec.id === 'stats-section' && statsVisualsContainer) statsVisualsContainer.classList.add('hidden');
                 if (sec.id === 'share-section' && shareAsImageBtnContainer) shareAsImageBtnContainer.classList.add('hidden');
                 if (sec.id === 'settings-section' && settingsContentDiv) settingsContentDiv.classList.add('hidden');
                 if (sec.id === 'share-section' && shareOptionsDiv) shareOptionsDiv.classList.add('hidden');
-            } else {
+            } else { // 'focus' mode
                  if (sec.id === 'stats-section' && statsVisualsContainer) statsVisualsContainer.classList.remove('hidden');
                  if (sec.id === 'share-section' && shareAsImageBtnContainer) shareAsImageBtnContainer.classList.remove('hidden');
                  if (sec.id === 'settings-section' && settingsContentDiv) settingsContentDiv.classList.remove('hidden');
                  if (sec.id === 'share-section' && shareOptionsDiv) shareOptionsDiv.classList.remove('hidden');
             }
-            if (sec.id === sectionIdToToggle) {
-                const isHidden = sectionElement.classList.toggle('hidden');
+
+            if (sec.id === sectionIdToToggle) { // 토글하려는 섹션인 경우
+                const isHidden = sectionElement.classList.toggle('hidden'); // 클래스 토글하고 현재 상태 가져오기
                 sec.button.textContent = isHidden ? sec.baseText : `${sec.baseText} 닫기`;
                 sec.button.setAttribute('aria-expanded', !isHidden);
                 sectionElement.setAttribute('aria-hidden', isHidden);
-                if (!isHidden) {
+
+                if (!isHidden) { // 섹션이 열렸다면
                     sec.button.classList.add('active');
                     sectionOpenedName = sec.baseText;
+                    // 특정 섹션 열릴 때 추가 작업
                     if (sec.id === 'history-section') renderHistory();
                     if (sec.id === 'stats-section') {
                         updateStats();
                         if (currentAppMode === 'focus' && dailyAchievementChartCtx) renderStatsVisuals();
                     }
-                } else {
+                } else { // 섹션이 닫혔다면
                     sec.button.classList.remove('active');
                 }
-            } else {
+            } else { // 다른 섹션들은 모두 닫기
                 if (!sectionElement.classList.contains('hidden')) {
                     sectionElement.classList.add('hidden');
                     sec.button.textContent = sec.baseText;
@@ -968,91 +764,544 @@ document.addEventListener('DOMContentLoaded', () => {
     if(toggleStatsBtn) toggleStatsBtn.addEventListener('click', () => toggleSection('stats-section'));
     if(toggleShareBtn) toggleShareBtn.addEventListener('click', () => toggleSection('share-section'));
     if(toggleSettingsBtn) toggleSettingsBtn.addEventListener('click', () => toggleSection('settings-section'));
-
-    function renderHistory() {
-        if (!historyListDiv) return;
+    function renderHistory() { /* ... 이전과 동일 ... */
+        if (!historyListDiv) return; // null 체크
         if (history.length === 0) { historyListDiv.innerHTML = '<p>지난 기록이 없습니다.</p>'; return; }
-        historyListDiv.innerHTML = '';
+        historyListDiv.innerHTML = ''; // 이전 내용 지우기
         history.forEach(entry => {
-            if (!entry || !entry.date || !Array.isArray(entry.tasks)) return;
+            if (!entry || !entry.date || !Array.isArray(entry.tasks)) return; // 유효성 검사
             const entryDiv = document.createElement('div'); entryDiv.classList.add('history-entry'); entryDiv.dataset.achieved = entry.achieved ? "true" : "false"; const dateStrong = document.createElement('strong'); dateStrong.textContent = `${entry.date.replaceAll('-', '.')}. ${entry.achieved ? "🎯" : ""}`; entryDiv.appendChild(dateStrong); const ul = document.createElement('ul');
             entry.tasks.forEach(task => { if(!task || typeof task.text !== 'string') return; const li = document.createElement('li'); li.textContent = task.text.length > 50 ? task.text.substring(0, 50) + "..." : task.text; li.title = task.text; if (task.completed) { li.classList.add('completed'); } ul.appendChild(li); });
             entryDiv.appendChild(ul); historyListDiv.appendChild(entryDiv);
         });
     }
+    function calculateAchievementRate(days) { /* ... 이전과 동일 ... */
+        if (history.length === 0) return "0% (기록 없음)";
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        let achievementCount = 0, relevantDaysCount = 0;
+        const recentHistory = history.slice(0, days * 2); // 최대 2배수 정도만 봄
 
-    function calculateAchievementRate(days) { /* 이전과 동일 */ return "0%"; } // 임시
-    function updateStats() { /* 이전과 동일 */ }
-    function renderStatsVisuals() { /* 이전과 동일 (Chart.js 관련 로직) */ }
-    const shareUrl = window.location.href;
-    function getShareText() { /* 이전과 동일 */ return ""; }
-    if(copyLinkBtn) { /* 이전과 동일 */ }
-    if(shareTwitterBtn) { /* 이전과 동일 */ }
-    if (shareAsImageBtn && typeof html2canvas !== 'undefined') { /* 이전과 동일 */ }
-    if (exportDataBtn) { /* 이전과 동일 */ }
-    if (importDataBtn && importFileInput) { /* 이전과 동일 */ }
-    document.addEventListener('keydown', (e) => { /* 이전과 동일 */ });
+        for (let i = 0; i < recentHistory.length; i++) {
+            const entry = recentHistory[i];
+            if (!entry || !entry.date) continue;
+            const entryDate = new Date(entry.date);
+            const diffTime = today.getTime() - entryDate.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < days && diffDays >= 0) { // 0일 전 (오늘) ~ days-1일 전
+                 relevantDaysCount++;
+                 if (entry.achieved) { achievementCount++; }
+            }
+            if (relevantDaysCount >= days) break; // N일치 다 찾았으면 종료
+        }
+        if (relevantDaysCount === 0) return `0% (최근 ${days}일 기록 없음)`;
+        const rate = (achievementCount / relevantDaysCount) * 100;
+        return `${rate.toFixed(0)}% (${achievementCount}/${relevantDaysCount}일)`;
+    }
+    function updateStats() { /* ... 이전과 동일 ... */
+        if(weeklyStatsEl) weeklyStatsEl.textContent = `지난 7일간 달성률: ${calculateAchievementRate(7)}`;
+        if(monthlyStatsEl) monthlyStatsEl.textContent = `지난 30일간 달성률: ${calculateAchievementRate(30)}`;
+    }
+    function renderStatsVisuals() { /* ... 이전과 동일 ... */
+        if (currentAppMode === 'simple' || !Chart || !dailyAchievementChartCtx || !statsVisualsContainer || !streakDaysEl || !mostAchievedDayEl) {
+            if(statsVisualsContainer) statsVisualsContainer.classList.add('hidden'); // 심플모드이거나 필수요소 없으면 숨김
+            if (achievementChart) { achievementChart.destroy(); achievementChart = null; }
+            return;
+        }
+        if(statsVisualsContainer) statsVisualsContainer.classList.remove('hidden'); // 집중모드면 보이게
+
+        // 연속 달성일 계산 (오늘 포함)
+        let currentStreak = 0;
+        let dateToCheck = new Date();
+        // 1. 오늘의 달성 여부 먼저 확인
+        const todayTasksForStreak = tasks.slice(0, MAX_TASKS_CURRENT_MODE);
+        const todayFilled = todayTasksForStreak.every(t => t.text.trim() !== "");
+        const todayCompleted = todayTasksForStreak.every(t => t.completed);
+        if (todayFilled && todayTasksForStreak.length === MAX_TASKS_CURRENT_MODE && todayCompleted && MAX_TASKS_CURRENT_MODE > 0) {
+            currentStreak++;
+        }
+        // 2. 어제부터 히스토리 확인 (오늘 달성 못했으면 연속은 0이므로, 오늘 달성했을 때만 어제부터 체크)
+        if (currentStreak > 0 || history.length > 0) { // 오늘 달성했거나, 히스토리가 있어야 어제부터 체크 의미 있음
+            if (currentStreak > 0) { // 오늘 달성한 경우, 어제부터 히스토리 탐색
+                 dateToCheck.setDate(dateToCheck.getDate() - 1); // 어제부터 시작
+                 for (let i = 0; i < history.length; i++) { // 히스토리 전체 탐색
+                    const entryDateStr = `${dateToCheck.getFullYear()}-${String(dateToCheck.getMonth() + 1).padStart(2, '0')}-${String(dateToCheck.getDate()).padStart(2, '0')}`;
+                    const entry = history.find(h => h.date === entryDateStr);
+                    if (entry && entry.achieved) {
+                        currentStreak++;
+                    } else {
+                        break; // 연속 깨짐
+                    }
+                    dateToCheck.setDate(dateToCheck.getDate() - 1); // 하루씩 이전으로
+                    if (currentStreak > 365) break; // 무한루프 방지 (1년 이상이면 충분)
+                 }
+            }
+        }
+        streakDaysEl.textContent = `${currentStreak}일`;
+
+        // 최다 달성 요일
+        const dayMap = ['일', '월', '화', '수', '목', '금', '토'];
+        const achievementByDay = [0, 0, 0, 0, 0, 0, 0];
+        history.filter(entry => entry.achieved).forEach(entry => { // 달성한 기록만
+            const dayIndex = new Date(entry.date).getDay(); // 0 (일요일) ~ 6 (토요일)
+            achievementByDay[dayIndex]++;
+        });
+        const maxAchievedCount = Math.max(...achievementByDay);
+        const mostAchievedDays = [];
+        achievementByDay.forEach((count, index) => {
+            if (count === maxAchievedCount && count > 0) { // 최대값이면서 0보다 커야 의미 있음
+                mostAchievedDays.push(dayMap[index]);
+            }
+        });
+        mostAchievedDayEl.textContent = mostAchievedDays.length > 0 ? mostAchievedDays.join(', ') + '요일' : '기록 없음';
+
+        // 최근 30일 달성 추이 (오늘 포함)
+        const labels = [];
+        const dataPoints = [];
+        const todayForChart = new Date();
+        for (let i = 29; i >= 0; i--) { // 오늘(i=0)부터 29일 전(i=29)까지
+            const targetDate = new Date(todayForChart);
+            targetDate.setDate(todayForChart.getDate() - i);
+            const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+            labels.push(dateStr.substring(5)); // MM-DD 형식
+
+            let achievedThisDayForChart = false;
+            if (i === 0) { // 오늘 날짜인 경우
+                const todayTasksForChart = tasks.slice(0, MAX_TASKS_CURRENT_MODE);
+                const filledForChart = todayTasksForChart.every(t=> t.text.trim() !== "");
+                const completedForChart = todayTasksForChart.every(t => t.completed);
+                achievedThisDayForChart = filledForChart && todayTasksForChart.length === MAX_TASKS_CURRENT_MODE && completedForChart && MAX_TASKS_CURRENT_MODE > 0;
+            } else { // 과거 날짜인 경우 히스토리에서 찾기
+                const entry = history.find(h => h.date === dateStr);
+                if (entry) achievedThisDayForChart = entry.achieved;
+            }
+            dataPoints.push(achievedThisDayForChart ? 1 : 0);
+        }
+
+        if (achievementChart) { achievementChart.destroy(); } // 기존 차트 파괴
+
+        const isDarkMode = document.body.classList.contains('dark-theme');
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--chart-grid-color-dark' : '--chart-grid-color-light').trim();
+        const fontColor = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--chart-font-color-dark' : '--chart-font-color-light').trim();
+        const primaryButtonBg = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--button-primary-bg-dark' : '--button-primary-bg-light').trim();
+
+        achievementChart = new Chart(dailyAchievementChartCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '일일 목표 달성 여부',
+                    data: dataPoints,
+                    borderColor: primaryButtonBg,
+                    backgroundColor: Chart.helpers.color(primaryButtonBg).alpha(0.2).rgbString(), // chart.js v3+
+                    tension: 0.1,
+                    fill: true,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, max: 1, ticks: { stepSize: 1, color: fontColor, callback: (v) => v === 1 ? '달성' : (v === 0 ? '미달성' : null) }, grid: { color: gridColor } },
+                    x: { ticks: { color: fontColor }, grid: { color: gridColor } }
+                },
+                plugins: { legend: { labels: { color: fontColor } }, tooltip: { callbacks: { label: (c) => c.parsed.y === 1 ? '달성' : '미달성' } } }
+            }
+        });
+        if(dailyAchievementChartCtx.canvas) dailyAchievementChartCtx.canvas.setAttribute('aria-label', '지난 30일간 일일 목표 달성 추이 그래프');
+    }
+    const shareUrl = window.location.href; /* ... 이전과 동일 ... */
+    function getShareText() { /* ... 이전과 동일 ... */
+        const hashtags = "#오늘할일 #집중력 #오늘셋팁";
+        return `오늘 할 일, 딱 ${MAX_TASKS_CURRENT_MODE}개만 골라서 집중 완료! 🎯 이렇게 하니 하루가 깔끔하네. (비법은 오늘셋 🤫) ${shareUrl} ${hashtags}`;
+    }
+    if(copyLinkBtn) { /* ... 이전과 동일 ... */
+        copyLinkBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(shareUrl).then(() => { const originalHTML = copyLinkBtn.innerHTML; copyLinkBtn.innerHTML = '<i class="fas fa-check"></i> 복사 완료!'; copyLinkBtn.classList.add('copy-success'); copyLinkBtn.disabled = true; setTimeout(() => { copyLinkBtn.innerHTML = originalHTML; copyLinkBtn.classList.remove('copy-success'); copyLinkBtn.disabled = false; }, 1500); announceToScreenReader("링크가 복사되었습니다."); }).catch(err => { console.error('링크 복사 실패:', err); alert('링크 복사에 실패했습니다.'); });
+        });
+    }
+    if(shareTwitterBtn) { /* ... 이전과 동일 ... */
+        shareTwitterBtn.addEventListener('click', (e) => {
+            e.preventDefault(); // 기본 동작 방지
+            const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(getShareText())}`; // URL은 텍스트에 포함
+            window.open(twitterUrl, '_blank');
+        });
+    }
+    if (shareIncludeAdditionalCheckbox) { /* ... 이전과 동일 ... */
+        shareIncludeAdditionalCheckbox.addEventListener('change', (e) => {
+            shareOptions.includeAdditional = e.target.checked;
+            saveState('local'); // 설정 변경 시 저장
+        });
+    }
+    if (shareIncludeMemosCheckbox) { /* ... 이전과 동일 ... */
+        shareIncludeMemosCheckbox.addEventListener('change', (e) => {
+            shareOptions.includeMemos = e.target.checked;
+            saveState('local'); // 설정 변경 시 저장
+        });
+    }
+    if (shareAsImageBtn && typeof html2canvas !== 'undefined') { /* ... 이전과 동일 ... */
+        shareAsImageBtn.addEventListener('click', () => {
+            if (currentAppMode === 'simple') {
+                alert("이미지 공유는 집중 모드에서만 사용 가능합니다.");
+                return;
+            }
+            const originalBtnText = shareAsImageBtn.innerHTML;
+            shareAsImageBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 생성 중...';
+            shareAsImageBtn.disabled = true;
+
+            const captureArea = document.createElement('div');
+            captureArea.id = 'image-capture-area'; // 임시 ID
+            captureArea.style.padding = '20px';
+            captureArea.style.width = '500px'; // 이미지 너비 고정
+            const isDarkMode = document.body.classList.contains('dark-theme');
+            captureArea.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--container-bg-color-dark' : '--container-bg-color-light').trim();
+            captureArea.style.color = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--text-color-primary-dark' : '--text-color-primary-light').trim();
+            captureArea.style.fontFamily = getComputedStyle(document.body).fontFamily;
+            captureArea.style.lineHeight = getComputedStyle(document.body).lineHeight;
+
+            const titleEl = document.createElement('h1');
+            titleEl.textContent = "오늘셋";
+            titleEl.style.fontSize = '2em'; titleEl.style.fontWeight = '700'; titleEl.style.textAlign = 'center'; titleEl.style.marginBottom = '5px';
+            captureArea.appendChild(titleEl);
+
+            const dateEl = document.createElement('p');
+            if(currentDateEl) dateEl.textContent = currentDateEl.textContent; // null 체크
+            dateEl.style.fontSize = '0.9em'; dateEl.style.textAlign = 'center'; dateEl.style.marginBottom = '15px';
+            dateEl.style.color = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--text-color-tertiary-dark' : '--text-color-tertiary-light').trim();
+            captureArea.appendChild(dateEl);
+
+            const taskListWrapperOriginal = document.querySelector('.task-list-wrapper');
+            if (taskListWrapperOriginal && taskListDiv) { // null 체크
+                const taskListWrapperClone = taskListWrapperOriginal.cloneNode(true);
+                // 불필요한 요소 제거 또는 수정 (캡처용)
+                const clonedAllDoneMsg = taskListWrapperClone.querySelector('#all-done-message');
+                if (clonedAllDoneMsg && clonedAllDoneMsg.classList.contains('hidden')) clonedAllDoneMsg.remove();
+
+                // 핵심 과제만 (MAX_TASKS_CURRENT_MODE 만큼)
+                const clonedTaskList = taskListWrapperClone.querySelector('.task-list');
+                if (clonedTaskList) {
+                    const allClonedItems = Array.from(clonedTaskList.children);
+                    allClonedItems.forEach((item, index) => {
+                        if (index >= MAX_TASKS_CURRENT_MODE) {
+                             item.remove();
+                        } else { // 메모 처리
+                            const originalTaskItem = taskListDiv.children[index]; // Get original item for memo content
+                            if (!originalTaskItem) return;
+
+                            const memoIconClone = item.querySelector('.memo-icon');
+                            const memoContainerClone = item.querySelector('.memo-container');
+
+                            if (currentAppMode === 'focus' && shareOptions.includeMemos) {
+                                const originalMemoTextarea = originalTaskItem.querySelector('.memo-container textarea');
+                                if (memoContainerClone && originalMemoTextarea && originalMemoTextarea.value.trim() !== "") {
+                                    memoContainerClone.classList.remove('hidden'); // 보이도록
+                                    const memoTextareaClone = memoContainerClone.querySelector('textarea');
+                                    if (memoTextareaClone) { // textarea를 div로 대체 (캡처용)
+                                        const memoDiv = document.createElement('div');
+                                        memoDiv.textContent = originalMemoTextarea.value;
+                                        memoDiv.style.whiteSpace = 'pre-wrap';
+                                        memoDiv.style.wordBreak = 'break-word';
+                                        memoDiv.style.fontSize = getComputedStyle(memoTextareaClone).fontSize;
+                                        memoDiv.style.fontFamily = getComputedStyle(memoTextareaClone).fontFamily;
+                                        memoDiv.style.lineHeight = getComputedStyle(memoTextareaClone).lineHeight;
+                                        memoDiv.style.padding = getComputedStyle(memoTextareaClone).padding;
+                                        memoDiv.style.color = getComputedStyle(memoTextareaClone).color;
+                                        memoContainerClone.replaceChild(memoDiv, memoTextareaClone);
+                                    }
+                                } else { // No memo or not including, remove memo elements
+                                    if (memoContainerClone) memoContainerClone.remove();
+                                    if (memoIconClone) memoIconClone.remove();
+                                }
+                            } else { // Not focus mode or not including memos
+                                if (memoContainerClone) memoContainerClone.remove();
+                                if (memoIconClone) memoIconClone.remove();
+                            }
+                        }
+                    });
+                }
+                taskListWrapperClone.style.marginTop = '0'; // 위쪽 마진 제거
+                captureArea.appendChild(taskListWrapperClone);
+            }
+
+
+            if (currentAppMode === 'focus' && shareOptions.includeAdditional && additionalTasks.length > 0) {
+                const additionalTasksSectionOriginal = document.getElementById('additional-tasks-section');
+                if(additionalTasksSectionOriginal && additionalTaskListDiv){ // null 체크
+                    const additionalTasksSectionClone = additionalTasksSectionOriginal.cloneNode(true); // Clone the whole section for title
+                    additionalTasksSectionClone.classList.remove('toggle-section-static', 'hidden'); // 보이도록
+                    const addInputArea = additionalTasksSectionClone.querySelector('.add-additional-task');
+                    if(addInputArea) addInputArea.remove(); // 입력 부분 제거
+
+                    const clonedAdditionalList = additionalTasksSectionClone.querySelector('#additional-task-list');
+                    if(clonedAdditionalList) { // Re-populate with current additional tasks
+                        clonedAdditionalList.innerHTML = ''; // Clear cloned content
+                        additionalTasks.forEach(task => {
+                            const item = document.createElement('div');
+                            item.className = 'additional-task-item'; // Add class for styling
+                            if (task.completed) item.classList.add('completed');
+
+                            // Create a simple text representation, no interactive elements
+                            const textSpan = document.createElement('span');
+                            textSpan.textContent = (task.completed ? '✅ ' : '◻️ ') + task.text;
+                            textSpan.style.fontSize = '0.95em'; // Match style
+                            textSpan.style.color = task.completed ? getComputedStyle(document.documentElement).getPropertyValue('--completed-text-color').trim() : 'inherit';
+                            if(task.completed) textSpan.style.textDecoration = 'line-through';
+
+                            item.appendChild(textSpan);
+                            clonedAdditionalList.appendChild(item);
+                        });
+                    }
+                    additionalTasksSectionClone.style.marginTop = '20px';
+                    captureArea.appendChild(additionalTasksSectionClone);
+                }
+            }
+
+            const linkEl = document.createElement('p');
+            linkEl.textContent = 'todayset.vercel.app'; // 실제 앱 주소 또는 원하는 문구
+            linkEl.style.fontSize = '0.8em'; linkEl.style.textAlign = 'center'; linkEl.style.marginTop = '20px';
+            linkEl.style.color = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--link-color-dark' : '--link-color-light').trim();
+            captureArea.appendChild(linkEl);
+
+            captureArea.style.position = 'absolute'; captureArea.style.left = '-9999px';
+            document.body.appendChild(captureArea);
+
+            html2canvas(captureArea, {
+                useCORS: true,
+                scale: window.devicePixelRatio || 1,
+                logging: false,
+                onclone: (clonedDoc) => {
+                    if (!taskListDiv) return;
+                    const clonedTaskTextareas = Array.from(clonedDoc.querySelectorAll('.task-list-wrapper .task-item textarea:not(.memo-container textarea)'));
+                    const originalTaskTextareas = Array.from(taskListDiv.querySelectorAll('.task-item textarea:not(.memo-container textarea)'));
+                    clonedTaskTextareas.forEach((clonedTextarea, i) => {
+                        if (originalTaskTextareas[i]) {
+                            clonedTextarea.value = originalTaskTextareas[i].value;
+                            clonedTextarea.style.height = "auto";
+                            clonedTextarea.style.height = (clonedTextarea.scrollHeight) + "px";
+                            clonedTextarea.style.overflowY = 'hidden';
+                        }
+                    });
+                }
+            }).then(canvas => {
+                const imageURL = canvas.toDataURL('image/png');
+                const downloadLink = document.createElement('a');
+                downloadLink.href = imageURL;
+                downloadLink.download = `오늘셋_할일_${getTodayDateString()}.png`;
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+                announceToScreenReader("할 일 목록 이미지가 다운로드되었습니다.");
+            }).catch(err => {
+                console.error('이미지 생성 실패:', err);
+                alert('이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+            }).finally(() => {
+                if (document.body.contains(captureArea)) {
+                    document.body.removeChild(captureArea);
+                }
+                shareAsImageBtn.innerHTML = originalBtnText;
+                shareAsImageBtn.disabled = false;
+            });
+        });
+    }
+    if (exportDataBtn) { /* ... 이전과 동일 ... */
+        exportDataBtn.addEventListener('click', () => {
+            if (currentAppMode === 'simple' && !confirm("심플 모드에서는 일부 데이터(추가 과제, 메모 등)가 제외된 상태로 표시될 수 있습니다. 현재 집중 모드 설정과 모든 데이터를 포함하여 내보냅니다. 계속하시겠습니까?")) {
+                 // return; // User cancelled
+            }
+            const currentTheme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+            const settingsToExport = {
+                appMode: currentAppMode,
+                theme: currentTheme,
+                focusTaskCount: focusModeTaskCountSetting,
+                shareOptions: shareOptions
+            };
+
+            const dataToExport = {
+                version: APP_VERSION_DATA_FORMAT,
+                appSettings: settingsToExport,
+                tasks: tasks, // Full tasks array (up to 5)
+                additionalTasks: additionalTasks, // Full additional tasks
+                history: history,
+            };
+            const dataStr = JSON.stringify(dataToExport, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = `오늘셋_백업_${getTodayDateString()}.json`;
+            let linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click(); // 다운로드 트리거
+            linkElement.remove(); // 링크 제거
+            const originalText = exportDataBtn.innerHTML; // 아이콘 포함 텍스트
+            exportDataBtn.innerHTML = '<i class="fas fa-check"></i> 내보내기 완료!';
+            announceToScreenReader("로컬 데이터를 성공적으로 내보냈습니다.");
+            setTimeout(() => { exportDataBtn.innerHTML = originalText; }, 2000);
+        });
+    }
+    if (importDataBtn && importFileInput) { /* ... 이전과 동일 ... */
+        importDataBtn.addEventListener('click', () => {
+            importFileInput.click(); // 숨겨진 파일 입력 필드 클릭
+        });
+
+        importFileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        if (confirm("현재 로컬 데이터를 덮어쓰고 가져온 데이터로 복원하시겠습니까? 이 작업은 되돌릴 수 없습니다. 클라우드 데이터와는 별개입니다.")) {
+                            if (importedData.version !== APP_VERSION_DATA_FORMAT && !confirm(`데이터 형식이 현재 앱 버전(${APP_VERSION_DATA_FORMAT})과 다릅니다 (${importedData.version || '알 수 없음'}). 계속 진행하시겠습니까? 호환성 문제가 발생할 수 있습니다.`)) {
+                                importFileInput.value = ''; // 파일 선택 초기화
+                                return;
+                            }
+
+                            const importedSettings = importedData.appSettings;
+                            if (importedSettings) {
+                                currentAppMode = importedSettings.appMode || 'simple';
+                                localStorage.setItem('oneulSetMode', currentAppMode);
+
+                                const themeToApply = importedSettings.theme || 'dark';
+                                localStorage.setItem('oneulSetTheme', themeToApply);
+
+                                focusModeTaskCountSetting = importedSettings.focusTaskCount || 3;
+                                localStorage.setItem('oneulSetFocusTaskCountSetting', focusModeTaskCountSetting.toString());
+                                if(taskCountSelector) taskCountSelector.value = focusModeTaskCountSetting;
+
+                                shareOptions = importedSettings.shareOptions || { includeAdditional: false, includeMemos: false };
+                                localStorage.setItem('oneulSetShareOptions', JSON.stringify(shareOptions));
+                                if (shareIncludeAdditionalCheckbox) shareIncludeAdditionalCheckbox.checked = shareOptions.includeAdditional;
+                                if (shareIncludeMemosCheckbox) shareIncludeMemosCheckbox.checked = shareOptions.includeMemos;
+                            } else {
+                                currentAppMode = localStorage.getItem('oneulSetMode') || 'simple';
+                                focusModeTaskCountSetting = parseInt(localStorage.getItem('oneulSetFocusTaskCountSetting') || '3', 10);
+                            }
+
+                            tasks = importedData.tasks || [];
+                            additionalTasks = importedData.additionalTasks || [];
+                            history = importedData.history || [];
+
+                            while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
+                            if (tasks.length > 5) tasks = tasks.slice(0,5);
+
+                            applyTheme(localStorage.getItem('oneulSetTheme') || 'dark', true);
+                            applyAppMode(currentAppMode, true);
+
+                            updateStats();
+                            if(currentAppMode === 'focus' && dailyAchievementChartCtx) renderStatsVisuals();
+                            renderHistory();
+
+                            saveState('local');
+
+                            if (confirm("로컬 데이터를 성공적으로 가져왔습니다. 변경사항을 완전히 적용하려면 페이지를 새로고침하는 것이 좋습니다. 지금 새로고침하시겠습니까?")) {
+                                window.location.reload();
+                            } else {
+                                announceToScreenReader("로컬 데이터를 성공적으로 가져왔습니다. 일부 변경사항은 페이지를 새로고침해야 적용될 수 있습니다.");
+                            }
+                        }
+                    } catch (err) {
+                        alert("데이터 가져오기 실패: 유효한 JSON 파일이 아니거나 파일이 손상되었습니다.");
+                        console.error("Import error:", err);
+                    } finally {
+                        importFileInput.value = '';
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+    }
+    document.addEventListener('keydown', (e) => { /* ... 이전과 동일 ... */
+        if ((e.altKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
+            if (currentAppMode === 'focus' && addAdditionalTaskInput && additionalTasksSection && !additionalTasksSection.classList.contains('hidden')) {
+                e.preventDefault();
+                addAdditionalTaskInput.focus();
+            }
+        }
+
+        if (e.key === 'Escape') {
+            // 모달 닫기
+            const authModal = document.getElementById('auth-modal');
+            if (authModal) {
+                authModal.remove();
+                return; // 모달이 닫혔으면 다른 Escape 동작은 하지 않음
+            }
+
+            if (currentAppMode === 'focus') {
+                const activeMemoContainer = document.querySelector('.memo-container:not(.hidden)');
+                if (activeMemoContainer) {
+                    const taskItem = activeMemoContainer.closest('.task-item');
+                    const memoIcon = taskItem?.querySelector('.memo-icon');
+                    memoIcon?.click();
+                }
+            }
+            let sectionClosed = false;
+            sections.forEach(sec => {
+                const sectionElement = document.getElementById(sec.id);
+                if (sectionElement && !sectionElement.classList.contains('hidden')) {
+                    toggleSection(sec.id);
+                    sectionClosed = true;
+                }
+            });
+            if (sectionClosed) announceToScreenReader("열린 섹션이 닫혔습니다.");
+
+            if (document.activeElement === addAdditionalTaskInput) {
+                addAdditionalTaskInput.blur();
+            }
+        }
+
+        if (document.activeElement?.closest('.task-list')) {
+            const currentTaskItem = document.activeElement.closest('.task-item');
+            if (!currentTaskItem || !taskListDiv) return;
+
+            const focusableElementsInItem = Array.from(currentTaskItem.querySelectorAll('textarea, .memo-icon'));
+            const currentIndex = focusableElementsInItem.indexOf(document.activeElement);
+            const allTaskItems = Array.from(taskListDiv.querySelectorAll('.task-item'));
+            const currentTaskItemIndex = allTaskItems.indexOf(currentTaskItem);
+
+            if (e.key === 'Tab' && !e.shiftKey) {
+                if (currentIndex === focusableElementsInItem.length - 1) {
+                    if (currentTaskItemIndex < MAX_TASKS_CURRENT_MODE - 1 && currentTaskItemIndex < allTaskItems.length -1) {
+                        e.preventDefault();
+                        allTaskItems[currentTaskItemIndex + 1].querySelector('textarea:not(.memo-container textarea)')?.focus();
+                    }
+                }
+            } else if (e.key === 'Tab' && e.shiftKey) {
+                 if (currentIndex === 0) {
+                    if (currentTaskItemIndex > 0) {
+                        e.preventDefault();
+                        const prevItemFocusables = Array.from(allTaskItems[currentTaskItemIndex - 1].querySelectorAll('textarea:not(.memo-container textarea), .memo-icon'));
+                        prevItemFocusables[prevItemFocusables.length -1]?.focus();
+                    }
+                 }
+            }
+        }
+    });
 
 
     // --- 초기화 실행 ---
     function initializeApp() {
-        console.log("Initializing app...");
-        // 최우선: 날짜 표시
+        const initialTheme = localStorage.getItem('oneulSetTheme') || 'dark';
+        applyTheme(initialTheme, true);
         displayCurrentDate();
 
-        // 테마는 로컬 스토리지 값으로 먼저 적용 (깜빡임 방지), Firestore에서 로드 후 다시 적용될 수 있음
-        currentTheme = localStorage.getItem('oneulSetTheme') || 'dark';
-        applyTheme(currentTheme, true, 'local'); // isInitialLoad=true, source='local'로 Firestore 쓰기 방지
-
-        // Firebase Auth 상태 변경 감지 설정
         if (firebaseAuth) {
-            firebaseAuth.onAuthStateChanged(async user => {
-                console.log("Auth state changed. User:", user ? user.uid : 'null');
-                updateAuthUI(user); // currentUser는 여기서 설정됨
-
+            firebaseAuth.onAuthStateChanged(user => {
+                updateAuthUI(user);
                 if (user) {
-                    // 로그인된 사용자
-                    announceToScreenReader(`${user.displayName || user.email}님, 환영합니다. 클라우드 데이터 동기화 중...`);
-                    try {
-                        await loadUserSettingsFromFirestore(user.uid); // Firestore에서 설정 로드 및 UI 반영
-                        // 이 함수는 내부적으로 applyTheme, applyAppMode 호출
-                        // TODO: Firestore에서 tasks, additionalTasks, history 로드 (다음 단계)
-                        // await loadUserDataFromFirestore(user.uid);
-                        console.log("User settings loaded/initialized from Firestore for", user.uid);
-                        loadStateFromLocalStorage(); // Firestore 설정 로드 후, 로컬 할 일/히스토리 데이터 로드
-                                                     // (다음 단계: Firestore 할 일 데이터 로드로 대체/병합)
-                        listenToUserSettings(user.uid); // 설정 실시간 리스너 시작
-                        // listenToUserTasks(user.uid); // 다음 단계에서 추가
-
-                        if(cloudSyncStatusDiv) cloudSyncStatusDiv.textContent = `로그인 됨 (${user.displayName || user.email}). 클라우드 설정 동기화 활성.`;
-                    } catch (error) {
-                        console.error("Critical error during post-login data loading for " + user.uid + ":", error);
-                        if(cloudSyncStatusDiv) cloudSyncStatusDiv.textContent = `클라우드 데이터 로드 실패. 로컬 데이터 사용 중.`;
-                        // Firestore 로드 실패 시, 로컬 데이터로 완전 대체 (이미 로드되었거나 여기서 다시 로드)
-                        loadStateFromLocalStorage();
-                    }
+                    console.log("User logged in:", user.uid);
+                    // TODO: Firestore에서 데이터 로드 (loadState('firebase'))
+                    // 지금은 로컬 데이터 우선 로드, 추후 Firebase와 병합/선택 로직
+                    loadState('local'); // 로그인 후 로컬 데이터 다시 로드 (UI 갱신)
+                    announceToScreenReader(`${user.displayName || user.email}님, 환영합니다.`);
                 } else {
-                    // 로그아웃된 사용자 또는 Firebase Auth 사용 불가
-                    console.log("User logged out or Firebase Auth not fully available. Loading local data.");
-                    if (userSettingsUnsubscribe) { // 리스너 해제
-                        console.log("Unsubscribing from user settings listener on logout/auth_unavailable.");
-                        userSettingsUnsubscribe();
-                        userSettingsUnsubscribe = null;
-                    }
-                    currentUser = null; // 명시적으로 currentUser null 처리
-                    loadStateFromLocalStorage(); // 로컬 데이터 로드 및 UI 반영
-                    if(cloudSyncStatusDiv) cloudSyncStatusDiv.textContent = '로그인하여 데이터를 클라우드에 동기화하세요.';
+                    console.log("User logged out or not logged in.");
+                    loadState('local'); // 로그아웃 후 로컬 데이터 로드
                 }
             });
         } else {
-            // Firebase Auth 자체가 초기화 실패한 심각한 경우
-            console.error("initializeApp: Firebase Auth is not available. App will run in local-only mode.");
-            updateAuthUI(null); // Auth UI를 비로그인 상태로 명시적 업데이트
-            loadStateFromLocalStorage(); // 로컬 데이터로만 실행
-            if(cloudSyncStatusDiv) cloudSyncStatusDiv.textContent = '클라우드 서비스 사용 불가. 로컬 모드로 실행 중.';
+            console.warn("Firebase Auth not available. Falling back to local data only.");
+            loadState('local');
         }
 
-        // 푸터 섹션 초기화
         sections.forEach(sec => {
             if(sec.button) sec.button.textContent = sec.baseText;
             const sectionElement = document.getElementById(sec.id);
@@ -1061,14 +1310,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(sec.button) sec.button.setAttribute('aria-expanded', 'false');
             }
         });
-
-        // 초기 렌더링 보장 (Firebase 로딩이 느릴 경우 대비)
-        // 만약 onAuthStateChanged가 빠르게 null을 반환하고 loadStateFromLocalStorage가 호출되면 중복될 수 있으나,
-        // UI가 최대한 빨리 보이도록 하기 위함.
-        if (!currentUser) { // 아직 로그인 상태가 아니면 로컬 데이터로 일단 그림
-            console.log("No current user on initial sync load, ensuring local data is rendered.");
-            loadStateFromLocalStorage();
-        }
     }
 
     initializeApp();
