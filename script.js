@@ -1,6 +1,6 @@
-// script.js - v1.14.0-content-realtime-sync - FULL CODE
+// script.js - v1.14.1-content-load-fix - FULL CODE
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded and parsed (v1.14.0)");
+    console.log("DOM fully loaded and parsed (v1.14.1)");
 
     // --- Firebase Configuration ---
     const firebaseConfig = {
@@ -42,9 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let userTasksUnsubscribe = null;
     let userAdditionalTasksUnsubscribe = null;
     let userHistoryUnsubscribe = null;
-    let isFirestoreDataLoading = false;
+    let isInitialFirestoreLoadComplete = false;
 
-    const APP_VERSION_DATA_FORMAT = "1.14.0-content-realtime-sync-data";
+    const APP_VERSION_DATA_FORMAT = "1.14.1-content-load-fix-data";
 
     // --- 유틸리티 함수 ---
     function announceToScreenReader(message) {
@@ -68,11 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function getUserDocRef(userId) {
         return (firestoreDB && userId) ? firestoreDB.collection('users').doc(userId) : null;
     }
-    // 하위 컬렉션 참조 (콘텐츠 데이터용) - 이 버전에서는 아직 사용 안 함 (다음 리팩토링에서)
-    // function getUserSubCollectionRef(userId, collectionName) {
-    //     const userDoc = getUserDocRef(userId);
-    //     return userDoc ? userDoc.collection(collectionName) : null;
-    // }
 
     async function initializeUserSettingsInFirestore(userId) {
         const userDocRef = getUserDocRef(userId);
@@ -174,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, error => console.error("Error in appSettings listener for " + userId + ":", error));
     }
 
-    // Firestore 콘텐츠 데이터 저장 함수들 (배열 전체를 저장하는 단순화된 방식)
     async function saveTasksToFirestore() {
         if (!currentUser || !firestoreDB || !tasks) return;
         const userDocRef = getUserDocRef(currentUser.uid);
@@ -205,55 +199,75 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Firestore 콘텐츠 데이터 로드 함수
     async function loadContentDataFromFirestore(userId) {
         if (!firestoreDB || !userId) return Promise.resolve(false);
         const userDocRef = getUserDocRef(userId);
         if (!userDocRef) return Promise.resolve(false);
 
-        console.log("Firestore: Attempting to load content data for", userId);
+        console.log("Firestore: Attempting to load ALL content data for", userId);
         try {
             const docSnap = await userDocRef.get();
-            let firestoreDataLoadedAtLeastOne = false;
+            let firestoreDataFound = false;
             if (docSnap.exists && docSnap.data()) {
                 const data = docSnap.data();
+                console.log("Firestore: Document data received:", data);
+
                 if (data.tasksData && Array.isArray(data.tasksData.items)) {
                     tasks = data.tasksData.items;
-                    firestoreDataLoadedAtLeastOne = true;
-                }
-                if (data.additionalTasksData && Array.isArray(data.additionalTasksData.items)) {
-                    additionalTasks = data.additionalTasksData.items;
-                    firestoreDataLoadedAtLeastOne = true;
-                }
-                if (data.historyData && Array.isArray(data.historyData.items)) {
-                    history = data.historyData.items;
-                    firestoreDataLoadedAtLeastOne = true;
+                    console.log(`Firestore: Tasks loaded (${tasks.length} items).`);
+                    firestoreDataFound = true;
+                } else {
+                    console.log("Firestore: No tasksData found. Initializing tasks locally.");
+                    initializeTasks();
                 }
 
-                if (firestoreDataLoadedAtLeastOne) {
-                    while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
-                    if (tasks.length > 5) tasks = tasks.slice(0,5);
-                    renderTasks(); renderAdditionalTasks(); renderHistory(); updateStats();
-                    if (currentAppMode === 'focus' && dailyAchievementChartCtx) renderStatsVisuals();
-                    announceToScreenReader("클라우드에서 할 일 데이터를 불러왔습니다.");
-                    console.log("Firestore: Content data loaded and applied.");
-                    return true;
+                if (data.additionalTasksData && Array.isArray(data.additionalTasksData.items)) {
+                    additionalTasks = data.additionalTasksData.items;
+                    console.log(`Firestore: AdditionalTasks loaded (${additionalTasks.length} items).`);
+                    firestoreDataFound = true;
+                } else {
+                    console.log("Firestore: No additionalTasksData found. Initializing additionalTasks locally.");
+                    additionalTasks = [];
                 }
+
+                if (data.historyData && Array.isArray(data.historyData.items)) {
+                    history = data.historyData.items;
+                    console.log(`Firestore: History loaded (${history.length} items).`);
+                    firestoreDataFound = true;
+                } else {
+                    console.log("Firestore: No historyData found. Initializing history locally.");
+                    history = [];
+                }
+
+                while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
+                if (tasks.length > 5) tasks = tasks.slice(0,5);
+
+                renderAllContentUI(); // UI 렌더링
+                if (firestoreDataFound) announceToScreenReader("클라우드에서 데이터를 불러왔습니다.");
+                return firestoreDataFound;
+            } else {
+                console.log("Firestore: No user document found for content for user " + userId + ". Initializing local content.");
+                initializeTasks(); additionalTasks = []; history = [];
+                renderAllContentUI();
+                return false;
             }
-            console.log("Firestore: No complete content data found for user " + userId + " in Firestore document.");
-            return false;
         } catch (error) {
             console.error("Error loading content data from Firestore for " + userId + ":", error);
-            announceToScreenReader("클라우드 할 일 데이터 로드 실패.");
+            announceToScreenReader("클라우드 데이터 로드 중 오류 발생.");
+            loadContentDataFromLocalStorage(); // 오류 시 로컬 데이터로 복구
             return Promise.reject(error);
         }
     }
 
-    // TODO: Firestore 콘텐츠 데이터 실시간 리스너 함수들 (다음 단계에서 구현)
-    // function listenToTasksChanges(userId) { /* ... */ }
-    // function listenToAdditionalTasksChanges(userId) { /* ... */ }
-    // function listenToHistoryChanges(userId) { /* ... */ }
-
+    function renderAllContentUI() {
+        renderTasks();
+        renderAdditionalTasks();
+        renderHistory();
+        updateStats();
+        const chartCanvasEl = document.getElementById('daily-achievement-chart');
+        const currentDailyAchievementChartCtx = chartCanvasEl ? chartCanvasEl.getContext('2d') : null;
+        if (currentAppMode === 'focus' && currentDailyAchievementChartCtx) renderStatsVisuals();
+    }
 
     // --- Firebase Authentication Functions ---
     async function signUpWithEmailPassword(email, password) {
@@ -399,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (toggleSettingsBtnEl && toggleSettingsBtnEl.classList.contains('active') && settingsSectionEl && !settingsSectionEl.classList.contains('hidden')) {
                 settingsSectionEl.classList.add('hidden');
-                const sections = getSectionsArray(); // 여기서 sections 배열을 가져옴
+                const sections = getSectionsArray();
                 const settingsSecInfo = sections.find(s => s.id === 'settings-section');
                 if (settingsSecInfo && settingsSecInfo.button) toggleSettingsBtnEl.textContent = settingsSecInfo.baseText;
                 toggleSettingsBtnEl.classList.remove('active');
@@ -488,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentDailyAchievementChartCtx = chartCanvasEl ? chartCanvasEl.getContext('2d') : null;
         if (currentAppMode === 'focus' && currentDailyAchievementChartCtx) renderStatsVisuals();
 
-        if (currentUser && firestoreDB && source === 'local' && !isFirestoreDataLoading) {
+        if (currentUser && firestoreDB && source === 'local' && !isInitialFirestoreLoadComplete) { // 로딩 중에는 저장 방지
             saveTasksToFirestore();
             saveAdditionalTasksToFirestore();
             saveHistoryToFirestore();
@@ -529,15 +543,11 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('oneulSetFocusTaskCountSettingBeforeReset', focusModeTaskCountSetting.toString());
             initializeTasks();
             if (currentAppMode === 'focus') additionalTasks = [];
-            // saveState('local'); // 여기서 호출하면 Firestore에 빈 데이터 업로드 가능성
+            // saveState('local'); // 로컬 초기화 후 자동 Firestore 저장 방지 (로그인 시 병합 로직에서 처리)
         }
         while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
         if (tasks.length > 5) tasks = tasks.slice(0,5);
-        renderTasks(); renderAdditionalTasks(); updateStats();
-        const chartCanvasEl = document.getElementById('daily-achievement-chart');
-        const currentDailyAchievementChartCtx = chartCanvasEl ? chartCanvasEl.getContext('2d') : null;
-        if (currentAppMode === 'focus' && currentDailyAchievementChartCtx) renderStatsVisuals();
-        renderHistory();
+        renderAllContentUI(); // 설정 로드 후 모든 콘텐츠 UI 렌더링
     }
     function initializeTasks() {
         tasks = [];
@@ -601,7 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
             checkbox.addEventListener('change', () => {
                 tasks[originalTaskIndex].completed = checkbox.checked;
                 taskItem.classList.toggle('completed', checkbox.checked); checkAllDone();
-                if(currentUser && !isFirestoreDataLoading) saveTaskToFirestore(tasks[originalTaskIndex]); // 개별 저장
+                if(currentUser && !isInitialFirestoreLoadComplete) saveTaskToFirestore(tasks[originalTaskIndex]); // 개별 저장으로 변경 고려
                 else saveState('local');
             });
             checkboxLabel.appendChild(checkbox); checkboxLabel.appendChild(checkboxSpan);
@@ -611,7 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
             textareaField.setAttribute('aria-label', `할 일 ${index + 1} 내용`);
             textareaField.addEventListener('input', (e) => { tasks[originalTaskIndex].text = e.target.value; autoGrowTextarea(e.target); });
             textareaField.addEventListener('blur', () => {
-                if(currentUser && !isFirestoreDataLoading) saveTaskToFirestore(tasks[originalTaskIndex]); else saveState('local');
+                if(currentUser && !isInitialFirestoreLoadComplete) saveTaskToFirestore(tasks[originalTaskIndex]); else saveState('local');
             });
             textareaField.addEventListener('focus', (e) => { autoGrowTextarea(e.target); });
             taskContentDiv.appendChild(textareaField);
@@ -626,7 +636,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 memoTextarea.setAttribute('aria-label', `할 일 ${index + 1} 메모 내용`);
                 memoTextarea.addEventListener('input', (e) => { tasks[originalTaskIndex].memo = e.target.value; autoGrowTextarea(e.target);});
                 memoTextarea.addEventListener('blur', () => {
-                    if(currentUser && !isFirestoreDataLoading) saveTaskToFirestore(tasks[originalTaskIndex]); else saveState('local');
+                    if(currentUser && !isInitialFirestoreLoadComplete) saveTaskToFirestore(tasks[originalTaskIndex]); else saveState('local');
                 });
                 memoContainer.appendChild(memoTextarea); taskItem.appendChild(memoContainer);
                 memoIcon.addEventListener('click', () => {
@@ -679,7 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
             checkbox.addEventListener('change', () => {
                 additionalTasks[index].completed = checkbox.checked;
                 taskItem.classList.toggle('completed', checkbox.checked);
-                if(currentUser && !isFirestoreDataLoading) saveAdditionalTaskToFirestore(additionalTasks[index]); else saveState('local');
+                if(currentUser && !isInitialFirestoreLoadComplete) saveAdditionalTaskToFirestore(additionalTasks[index]); else saveState('local');
             });
             checkboxLabel.appendChild(checkbox); checkboxLabel.appendChild(checkboxSpan);
             const taskText = document.createElement('span'); taskText.classList.add('additional-task-text');
@@ -689,12 +699,24 @@ document.addEventListener('DOMContentLoaded', () => {
             deleteBtn.addEventListener('click', () => {
                 const taskToDelete = additionalTasks.splice(index, 1)[0];
                 renderAdditionalTasks();
-                if(currentUser && !isFirestoreDataLoading) deleteAdditionalTaskFromFirestore(taskToDelete.id); else saveState('local');
+                if(currentUser && !isInitialFirestoreLoadComplete) deleteAdditionalTaskFromFirestore(taskToDelete.id); // 개별 삭제 함수 필요 (다음 단계)
+                else saveState('local');
                 announceToScreenReader(`추가 과제 "${taskToDelete.text}"가 삭제되었습니다.`);
             });
             taskItem.appendChild(checkboxLabel); taskItem.appendChild(taskText); taskItem.appendChild(deleteBtn);
             additionalTaskListDivElToCheck.appendChild(taskItem);
         });
+    }
+    async function deleteAdditionalTaskFromFirestore(additionalTaskId) { // 추가됨
+        if (!currentUser || !firestoreDB || !additionalTaskId) return;
+        const userDocRef = getUserDocRef(currentUser.uid);
+        if (!userDocRef) return;
+        try {
+            // 현재는 전체 배열을 업데이트하는 방식이므로, 해당 ID를 제외한 배열로 다시 저장
+            const updatedAdditionalTasks = additionalTasks.filter(at => at.id !== additionalTaskId);
+            await userDocRef.set({ additionalTasksData: { items: updatedAdditionalTasks, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
+            console.log("Firestore: AdditionalTask deleted via array update:", additionalTaskId);
+        } catch (error) { console.error("Error deleting additionalTask from Firestore:", additionalTaskId, error); }
     }
     function setupAdditionalTaskListener() {
         const addBtn = document.getElementById('add-additional-task-btn');
@@ -707,7 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const newAdditionalTask = { id: Date.now(), text: text, completed: false };
                     additionalTasks.push(newAdditionalTask);
                     addInput.value = ''; renderAdditionalTasks();
-                    if(currentUser && !isFirestoreDataLoading) saveAdditionalTaskToFirestore(newAdditionalTask); else saveState('local');
+                    if(currentUser && !isInitialFirestoreLoadComplete) saveAdditionalTaskToFirestore(newAdditionalTask); else saveState('local');
                     announceToScreenReader(`추가 과제 "${text}"가 추가되었습니다.`); addInput.focus();
                 }
             });
@@ -846,12 +868,12 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
             }
         }
-        streakDaysElToSet.textContent = `${currentStreak}일`;
+        if (streakDaysElToSet) streakDaysElToSet.textContent = `${currentStreak}일`;
         const dayMap = ['일', '월', '화', '수', '목', '금', '토']; const achievementByDay = [0,0,0,0,0,0,0];
         history.filter(entry => entry.achieved).forEach(entry => { achievementByDay[new Date(entry.date).getDay()]++; });
         const maxAchievedCount = Math.max(...achievementByDay); const mostAchievedDays = [];
         achievementByDay.forEach((count, index) => { if (count === maxAchievedCount && count > 0) mostAchievedDays.push(dayMap[index]); });
-        mostAchievedDayElToSet.textContent = mostAchievedDays.length > 0 ? mostAchievedDays.join(', ') + '요일' : '기록 없음';
+        if (mostAchievedDayElToSet) mostAchievedDayElToSet.textContent = mostAchievedDays.length > 0 ? mostAchievedDays.join(', ') + '요일' : '기록 없음';
         const labels = []; const dataPoints = []; const todayForChart = new Date();
         for (let i = 29; i >= 0; i--) {
             const targetDate = new Date(todayForChart); targetDate.setDate(todayForChart.getDate() - i);
@@ -897,14 +919,130 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareUrl = window.location.href;
     function getShareText() { const hashtags = "#오늘할일 #집중력 #오늘셋팁"; return `오늘 할 일, 딱 ${MAX_TASKS_CURRENT_MODE}개만 골라서 집중 완료! 🎯 (오늘셋 🤫) ${shareUrl} ${hashtags}`; }
 
+    function setupShareAsImageListener() {
+        const shareAsImageBtnEl = document.getElementById('share-as-image-btn');
+        if (shareAsImageBtnEl && typeof html2canvas !== 'undefined') {
+            shareAsImageBtnEl.addEventListener('click', () => {
+                if (currentAppMode === 'simple') {
+                    alert("이미지 공유는 집중 모드에서만 사용 가능합니다."); return;
+                }
+                const originalBtnText = shareAsImageBtnEl.innerHTML;
+                shareAsImageBtnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 생성 중...';
+                shareAsImageBtnEl.disabled = true;
+                const captureArea = document.createElement('div');
+                captureArea.id = 'image-capture-area';
+                captureArea.style.padding = '20px'; captureArea.style.width = '500px';
+                const isDarkMode = document.body.classList.contains('dark-theme');
+                captureArea.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--container-bg-color-dark' : '--container-bg-color-light').trim();
+                captureArea.style.color = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--text-color-primary-dark' : '--text-color-primary-light').trim();
+                captureArea.style.fontFamily = getComputedStyle(document.body).fontFamily;
+                captureArea.style.lineHeight = getComputedStyle(document.body).lineHeight;
+                const titleEl = document.createElement('h1'); titleEl.textContent = "오늘셋";
+                titleEl.style.fontSize = '2em'; titleEl.style.fontWeight = '700'; titleEl.style.textAlign = 'center'; titleEl.style.marginBottom = '5px';
+                captureArea.appendChild(titleEl);
+                const currentDateElForCapture = document.getElementById('current-date');
+                const dateEl = document.createElement('p');
+                if(currentDateElForCapture) dateEl.textContent = currentDateElForCapture.textContent;
+                dateEl.style.fontSize = '0.9em'; dateEl.style.textAlign = 'center'; dateEl.style.marginBottom = '15px';
+                dateEl.style.color = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--text-color-tertiary-dark' : '--text-color-tertiary-light').trim();
+                captureArea.appendChild(dateEl);
+                const taskListWrapperOriginal = document.querySelector('.task-list-wrapper');
+                const taskListDivForCapture = document.querySelector('.task-list');
+                if (taskListWrapperOriginal && taskListDivForCapture) {
+                    const taskListWrapperClone = taskListWrapperOriginal.cloneNode(true);
+                    const clonedAllDoneMsg = taskListWrapperClone.querySelector('#all-done-message');
+                    if (clonedAllDoneMsg && clonedAllDoneMsg.classList.contains('hidden')) clonedAllDoneMsg.remove();
+                    const clonedTaskList = taskListWrapperClone.querySelector('.task-list');
+                    if (clonedTaskList) {
+                        const allClonedItems = Array.from(clonedTaskList.children);
+                        allClonedItems.forEach((item, index) => {
+                            if (index >= MAX_TASKS_CURRENT_MODE) item.remove();
+                            else {
+                                const originalTaskItem = taskListDivForCapture.children[index];
+                                if (!originalTaskItem) return;
+                                const memoIconClone = item.querySelector('.memo-icon');
+                                const memoContainerClone = item.querySelector('.memo-container');
+                                if (currentAppMode === 'focus' && shareOptions.includeMemos) {
+                                    const originalMemoTextarea = originalTaskItem.querySelector('.memo-container textarea');
+                                    if (memoContainerClone && originalMemoTextarea && originalMemoTextarea.value.trim() !== "") {
+                                        memoContainerClone.classList.remove('hidden');
+                                        const memoTextareaClone = memoContainerClone.querySelector('textarea');
+                                        if (memoTextareaClone) {
+                                            const memoDiv = document.createElement('div');
+                                            memoDiv.textContent = originalMemoTextarea.value;
+                                            memoDiv.style.whiteSpace = 'pre-wrap'; memoDiv.style.wordBreak = 'break-word';
+                                            memoDiv.style.padding = getComputedStyle(memoTextareaClone).padding;
+                                            memoContainerClone.replaceChild(memoDiv, memoTextareaClone);
+                                        }
+                                    } else {
+                                        if (memoContainerClone) memoContainerClone.remove();
+                                        if (memoIconClone) memoIconClone.remove();
+                                    }
+                                } else {
+                                    if (memoContainerClone) memoContainerClone.remove();
+                                    if (memoIconClone) memoIconClone.remove();
+                                }
+                            }
+                        });
+                    }
+                    taskListWrapperClone.style.marginTop = '0'; captureArea.appendChild(taskListWrapperClone);
+                }
+                const additionalTaskListDivForCapture = document.getElementById('additional-task-list');
+                if (currentAppMode === 'focus' && shareOptions.includeAdditional && additionalTasks.length > 0) {
+                    const additionalTasksSectionOriginal = document.getElementById('additional-tasks-section');
+                    if(additionalTasksSectionOriginal && additionalTaskListDivForCapture){
+                        const additionalTasksSectionClone = document.createElement('section');
+                        additionalTasksSectionClone.innerHTML = `<h2><i class="fas fa-stream"></i> 추가 과제</h2>`;
+                        const clonedAdditionalList = document.createElement('div');
+                        additionalTasks.forEach(task => {
+                            const item = document.createElement('div'); item.style.padding = '5px 0';
+                            item.style.borderBottom = '1px dashed var(--border-color)';
+                            if (task.completed) item.style.textDecoration = 'line-through';
+                            item.textContent = (task.completed ? '✅ ' : '◻️ ') + task.text;
+                            clonedAdditionalList.appendChild(item);
+                        });
+                        if (clonedAdditionalList.lastChild) clonedAdditionalList.lastChild.style.borderBottom = 'none';
+                        additionalTasksSectionClone.appendChild(clonedAdditionalList);
+                        additionalTasksSectionClone.style.marginTop = '20px'; captureArea.appendChild(additionalTasksSectionClone);
+                    }
+                }
+                const linkEl = document.createElement('p'); linkEl.textContent = 'todayset.vercel.app';
+                linkEl.style.fontSize = '0.8em'; linkEl.style.textAlign = 'center'; linkEl.style.marginTop = '20px';
+                linkEl.style.color = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--link-color-dark' : '--link-color-light').trim();
+                captureArea.appendChild(linkEl);
+                captureArea.style.position = 'absolute'; captureArea.style.left = '-9999px'; document.body.appendChild(captureArea);
+                html2canvas(captureArea, { useCORS: true, scale: window.devicePixelRatio || 1, logging: false, onclone: (clonedDoc) => {
+                    if (!taskListDivForCapture) return;
+                    const clonedTaskTextareas = Array.from(clonedDoc.querySelectorAll('.task-list-wrapper .task-item textarea:not(.memo-container textarea)'));
+                    const originalTaskTextareas = Array.from(taskListDivForCapture.querySelectorAll('.task-item textarea:not(.memo-container textarea)'));
+                    clonedTaskTextareas.forEach((clonedTextarea, i) => {
+                        if (originalTaskTextareas[i]) {
+                            clonedTextarea.value = originalTaskTextareas[i].value;
+                            clonedTextarea.style.height = "auto"; clonedTextarea.style.height = (clonedTextarea.scrollHeight) + "px";
+                            clonedTextarea.style.overflowY = 'hidden';
+                        }
+                    });
+                }}).then(canvas => {
+                    const imageURL = canvas.toDataURL('image/png');
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = imageURL; downloadLink.download = `오늘셋_할일_${getTodayDateString()}.png`;
+                    document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
+                    announceToScreenReader("할 일 목록 이미지가 다운로드되었습니다.");
+                }).catch(err => { console.error('이미지 생성 실패:', err); alert('이미지 생성에 실패했습니다.');
+                }).finally(() => {
+                    if (document.body.contains(captureArea)) document.body.removeChild(captureArea);
+                    shareAsImageBtnEl.innerHTML = originalBtnText; shareAsImageBtnEl.disabled = false;
+                });
+            });
+        }
+    }
+
     function setupOtherEventListeners() {
         const copyLinkBtnEl = document.getElementById('copy-link-btn');
         if(copyLinkBtnEl) copyLinkBtnEl.addEventListener('click', () => { navigator.clipboard.writeText(shareUrl).then(() => { const o = copyLinkBtnEl.innerHTML; copyLinkBtnEl.innerHTML = '<i class="fas fa-check"></i> 복사 완료!'; copyLinkBtnEl.classList.add('copy-success'); copyLinkBtnEl.disabled = true; setTimeout(() => { copyLinkBtnEl.innerHTML = o; copyLinkBtnEl.classList.remove('copy-success'); copyLinkBtnEl.disabled = false; }, 1500); announceToScreenReader("링크가 복사되었습니다."); }).catch(err => { console.error('링크 복사 실패:', err); alert('링크 복사에 실패했습니다.'); }); });
         const shareTwitterBtnEl = document.getElementById('share-twitter-btn');
         if(shareTwitterBtnEl) shareTwitterBtnEl.addEventListener('click', (e) => { e.preventDefault(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(getShareText())}`, '_blank'); });
-
-        setupShareAsImageListener(); // 이미지 공유 리스너 설정 호출
-
+        setupShareAsImageListener();
         const exportDataBtnEl = document.getElementById('export-data-btn');
         if (exportDataBtnEl) {
             exportDataBtnEl.addEventListener('click', () => {
@@ -944,8 +1082,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 history = importedData.history || [];
                                 while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
                                 if (tasks.length > 5) tasks = tasks.slice(0,5);
-                                loadContentDataFromLocalStorage(); // 콘텐츠 데이터 로드 및 렌더링
-                                saveState('local');
+                                loadContentDataFromLocalStorage();
+                                saveState('local'); // 가져온 데이터 로컬 저장
                                 if (confirm("로컬 데이터 가져오기 성공. 새로고침하시겠습니까?")) window.location.reload();
                                 else announceToScreenReader("로컬 데이터 가져오기 성공.");
                             }
@@ -985,73 +1123,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (sectionClosed) announceToScreenReader("열린 섹션이 닫혔습니다.");
                 if (document.activeElement === addAdditionalTaskInputEl) addAdditionalTaskInputEl.blur();
             }
-            // 할 일 목록 내 Tab 키 네비게이션 (이전 코드 참고)
         });
-    }
-    function setupShareAsImageListener() {
-        const shareAsImageBtnEl = document.getElementById('share-as-image-btn');
-        if (shareAsImageBtnEl && typeof html2canvas !== 'undefined') {
-            shareAsImageBtnEl.addEventListener('click', () => {
-                if (currentAppMode === 'simple') {
-                    alert("이미지 공유는 집중 모드에서만 사용 가능합니다."); return;
-                }
-                const originalBtnText = shareAsImageBtnEl.innerHTML;
-                shareAsImageBtnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 생성 중...';
-                shareAsImageBtnEl.disabled = true;
-                const captureArea = document.createElement('div');
-                captureArea.id = 'image-capture-area';
-                captureArea.style.padding = '20px'; captureArea.style.width = '500px';
-                const isDarkMode = document.body.classList.contains('dark-theme');
-                captureArea.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--container-bg-color-dark' : '--container-bg-color-light').trim();
-                captureArea.style.color = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--text-color-primary-dark' : '--text-color-primary-light').trim();
-                captureArea.style.fontFamily = getComputedStyle(document.body).fontFamily;
-                captureArea.style.lineHeight = getComputedStyle(document.body).lineHeight;
-                const titleEl = document.createElement('h1'); titleEl.textContent = "오늘셋";
-                titleEl.style.fontSize = '2em'; titleEl.style.fontWeight = '700'; titleEl.style.textAlign = 'center'; titleEl.style.marginBottom = '5px';
-                captureArea.appendChild(titleEl);
-                const currentDateElForCapture = document.getElementById('current-date');
-                const dateEl = document.createElement('p');
-                if(currentDateElForCapture) dateEl.textContent = currentDateElForCapture.textContent;
-                dateEl.style.fontSize = '0.9em'; dateEl.style.textAlign = 'center'; dateEl.style.marginBottom = '15px';
-                dateEl.style.color = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--text-color-tertiary-dark' : '--text-color-tertiary-light').trim();
-                captureArea.appendChild(dateEl);
-                const taskListWrapperOriginal = document.querySelector('.task-list-wrapper');
-                const taskListDivForCapture = document.querySelector('.task-list');
-                if (taskListWrapperOriginal && taskListDivForCapture) {
-                    const taskListWrapperClone = taskListWrapperOriginal.cloneNode(true);
-                    const clonedAllDoneMsg = taskListWrapperClone.querySelector('#all-done-message');
-                    if (clonedAllDoneMsg && clonedAllDoneMsg.classList.contains('hidden')) clonedAllDoneMsg.remove();
-                    const clonedTaskList = taskListWrapperClone.querySelector('.task-list');
-                    if (clonedTaskList) {
-                        const allClonedItems = Array.from(clonedTaskList.children);
-                        allClonedItems.forEach((item, index) => {
-                            if (index >= MAX_TASKS_CURRENT_MODE) item.remove();
-                            else { /* 메모 처리 로직 */ }
-                        });
-                    }
-                    taskListWrapperClone.style.marginTop = '0'; captureArea.appendChild(taskListWrapperClone);
-                }
-                const additionalTaskListDivForCapture = document.getElementById('additional-task-list');
-                if (currentAppMode === 'focus' && shareOptions.includeAdditional && additionalTasks.length > 0) { /* 추가 과제 캡처 로직 */ }
-                const linkEl = document.createElement('p'); linkEl.textContent = 'todayset.vercel.app'; /* ... */ captureArea.appendChild(linkEl);
-                captureArea.style.position = 'absolute'; captureArea.style.left = '-9999px'; document.body.appendChild(captureArea);
-                html2canvas(captureArea, { useCORS: true, scale: window.devicePixelRatio || 1, logging: false, onclone: (clonedDoc) => { /* ... */ }
-                }).then(canvas => { /* 이미지 다운로드 로직 */ }).catch(err => { /* 에러 처리 */ }).finally(() => { /* ... */ });
-            });
-        }
     }
 
     // --- 초기화 실행 ---
     async function initializeApp() {
-        console.log("Initializing app (v1.14.0 - Full Code)...");
-
+        console.log("Initializing app (v1.14.1 - Full Code)...");
         if (!document.getElementById('current-date') || !document.querySelector('.task-list') || !document.getElementById('auth-status')) {
-            console.error("CRITICAL: Essential DOM elements not found. Aborting initialization.");
-            document.body.innerHTML = '<div style="text-align:center;padding:20px;">앱 로딩 오류. 새로고침 해주세요. (DOM_MISSING)</div>'; return;
+            document.body.innerHTML = '<div style="text-align:center;padding:20px;">앱 로딩 오류. (DOM_MISSING)</div>'; return;
         }
-
         displayCurrentDate();
-
         currentTheme = localStorage.getItem('oneulSetTheme') || 'dark';
         currentAppMode = localStorage.getItem('oneulSetMode') || 'simple';
         focusModeTaskCountSetting = parseInt(localStorage.getItem('oneulSetFocusTaskCountSetting') || '3', 10);
@@ -1072,7 +1153,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateAuthUI(user);
                 if (user) {
                     announceToScreenReader(`${user.displayName || user.email}님, 환영합니다.`);
-                    isFirestoreDataLoading = true;
+                    isInitialFirestoreLoadComplete = false;
                     try {
                         const firestoreSettings = await loadAppSettingsFromFirestore(user.uid);
                         if (firestoreSettings) applySettingsToLocalAndUI(firestoreSettings, 'firestore');
@@ -1083,22 +1164,57 @@ document.addEventListener('DOMContentLoaded', () => {
                             loadContentDataFromLocalStorage(); // Firestore에 콘텐츠 없으면 로컬 사용
                             if (tasks.some(t => t.text.trim() !== '') || additionalTasks.length > 0 || history.length > 0) {
                                 console.log("Local content exists. Uploading to Firestore...");
-                                await saveTasksToFirestore(); // 배열 전체 저장 방식
+                                await saveTasksToFirestore();
                                 await saveAdditionalTasksToFirestore();
                                 await saveHistoryToFirestore();
                             }
                         }
                         listenToAppSettingsChanges(user.uid);
-                        // TODO: 콘텐츠 실시간 리스너 추가 (listenToTasksChanges 등)
+                        // TODO: listenToTasksChanges(user.uid);
+                        // TODO: listenToAdditionalTasksChanges(user.uid);
+                        // TODO: listenToHistoryChanges(user.uid);
                         const cloudStatus = document.getElementById('cloud-sync-status');
                         if(cloudStatus) cloudStatus.textContent = `로그인 됨. 클라우드 동기화 활성.`;
-                    } catch (error) { /* 오류 처리 */ }
-                    finally { isFirestoreDataLoading = false; }
-                } else { /* 로그아웃 처리 */ }
+                    } catch (error) {
+                         console.error("Error during post-login Firestore operations:", error);
+                         const cloudStatus = document.getElementById('cloud-sync-status');
+                         if(cloudStatus) cloudStatus.textContent = `클라우드 데이터 처리 오류.`;
+                         loadContentDataFromLocalStorage(); // 오류 시 로컬 데이터로 UI 복원
+                    } finally {
+                        isInitialFirestoreLoadComplete = true;
+                    }
+                } else { // 로그아웃
+                    if (userSettingsUnsubscribe) userSettingsUnsubscribe(); userSettingsUnsubscribe = null;
+                    if (userTasksUnsubscribe) userTasksUnsubscribe(); userTasksUnsubscribe = null;
+                    if (userAdditionalTasksUnsubscribe) userAdditionalTasksUnsubscribe(); userAdditionalTasksUnsubscribe = null;
+                    if (userHistoryUnsubscribe) userHistoryUnsubscribe(); userHistoryUnsubscribe = null;
+                    currentUser = null;
+                    isInitialFirestoreLoadComplete = false;
+                    const localSettings = {
+                        appMode: localStorage.getItem('oneulSetMode') || 'simple',
+                        theme: localStorage.getItem('oneulSetTheme') || 'dark',
+                        focusTaskCount: parseInt(localStorage.getItem('oneulSetFocusTaskCountSetting') || '3', 10),
+                        shareOptions: JSON.parse(localStorage.getItem('oneulSetShareOptions') || '{"includeAdditional":false,"includeMemos":false}')
+                    };
+                    applySettingsToLocalAndUI(localSettings, 'local_logout');
+                    loadContentDataFromLocalStorage();
+                    const cloudStatus = document.getElementById('cloud-sync-status');
+                    if(cloudStatus) cloudStatus.textContent = '로그인하여 데이터를 클라우드에 동기화하세요.';
+                    announceToScreenReader("로그아웃 되었습니다.");
+                }
             });
-        } else { /* Firebase Auth 사용 불가 처리 */ }
+        } else {
+            console.warn("initializeApp: Firebase Auth is not available. Running local-only.");
+            updateAuthUI(null); loadContentDataFromLocalStorage();
+            const cloudStatus = document.getElementById('cloud-sync-status');
+            if(cloudStatus) cloudStatus.textContent = '클라우드 서비스 사용 불가.';
+        }
         console.log("App initialization sequence ended.");
     }
 
-    initializeApp().catch(err => { /* 최상위 에러 처리 */ });
+    initializeApp().catch(err => {
+        console.error("FATAL: Error during initializeApp execution:", err);
+        const body = document.querySelector('body');
+        if (body) body.innerHTML = '<div style="padding: 20px; text-align: center;">앱 로딩 중 오류 발생. 새로고침 해주세요. (Error Code: INIT_FATAL)</div>';
+    });
 });
