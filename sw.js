@@ -1,6 +1,7 @@
-// sw.js - v1.11.1-pwa (캐시 URL 수정)
+--- START OF FILE sw.js ---
+// sw.js - v1.12.0-optimized-caching (캐시 전략 최적화 및 URL 수정)
 
-const CACHE_NAME = 'oneulset-cache-v1.11.1'; // 캐시 이름 업데이트 (버전 반영)
+const CACHE_NAME = 'oneulset-cache-v1.12.0'; // 캐시 이름 업데이트 (버전 반영)
 const urlsToCache = [
   '/',
   '/index.html',
@@ -9,15 +10,15 @@ const urlsToCache = [
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
-  'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap', // 꺾쇠괄호 제거
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css', // 꺾쇠괄호 제거
-  'https://cdn.jsdelivr.net/npm/chart.js', // 꺾쇠괄호 제거
-  'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', // 꺾쇠괄호 제거
-  // Firebase SDK 관련 URL은 현재 코드에서 사용되지 않으므로, 원본 sw.js에서 가져왔다면 필요 여부 재확인
-  // 만약 Firebase를 사용하지 않는다면 아래 URL들은 제거 가능
-  // 'https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js',
-  // 'https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js',
-  // 'https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js'
+  '<https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap>',
+  // index.html에서 사용되는 최신 Font Awesome 버전으로 업데이트
+  '<https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css>',
+  '<https://cdn.jsdelivr.net/npm/chart.js>',
+  '<https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js>',
+  // Firebase SDK 관련 URL은 서비스 워커에서 캐싱하지 않고 네트워크 우선으로 처리하므로 제거함
+  // '<https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js>',
+  // '<https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js>',
+  // '<https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js>'
 ];
 
 self.addEventListener('install', (event) => {
@@ -26,28 +27,16 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('[Service Worker] Caching app shell');
-        // 캐시할 때 네트워크 요청을 항상 새로 하도록 (캐시 무시)
-        const cachePromises = urlsToCache.map(urlToCache => {
-            return fetch(new Request(urlToCache, {cache: 'reload'}))
-                .then(response => {
-                    if (!response.ok && response.type !== 'opaque') { // opaque 응답은 CDN 리소스일 수 있으므로 허용
-                        console.error(`[Service Worker] Failed to fetch ${urlToCache} for caching: ${response.status} ${response.statusText}`);
-                        // 실패한 경우에도 계속 진행 (부분적 캐싱 성공 가능)
-                        // 또는 여기서 에러를 throw하여 전체 install 실패 처리 가능
-                    }
-                    return cache.put(urlToCache, response);
-                })
-                .catch(error => {
-                    console.error(`[Service Worker] Error fetching and caching ${urlToCache}:`, error);
-                });
-        });
-        return Promise.all(cachePromises);
+        // cache.addAll은 모든 URL을 성공적으로 캐시해야 합니다.
+        // 네트워크 오류 시 설치 실패는 예상된 동작입니다.
+        return cache.addAll(urlsToCache);
       })
       .then(() => {
         return self.skipWaiting();
       })
       .catch(error => {
         console.error('[Service Worker] Cache addAll or skipWaiting failed:', error);
+        // 설치 실패 시 사용자에게 알리거나 적절한 폴백 로직을 추가할 수 있습니다.
       })
   );
 });
@@ -128,3 +117,4 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+--- END OF FILE sw.js ---
