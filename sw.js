@@ -1,4 +1,4 @@
---- START OF FILE sw.js ---
+
 // sw.js - v1.12.0-optimized-caching (캐시 전략 최적화 및 URL 수정)
 
 const CACHE_NAME = 'oneulset-cache-v1.12.0'; // 캐시 이름 업데이트 (버전 반영)
@@ -117,4 +117,3 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
---- END OF FILE sw.js ---
