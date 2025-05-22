@@ -1,4 +1,4 @@
-/* style.css - v1.13.0-firebase-auth */
+
 
 /* 기본 스타일 초기화 */
 * {
@@ -55,8 +55,8 @@
     --app-mode-toggle-bg-dark: var(--button-secondary-bg-dark);
     --app-mode-toggle-text-dark: var(--button-secondary-text-dark);
     --focus-outline-color-dark: var(--button-primary-bg-dark);
-    --auth-btn-bg-dark: var(--button-secondary-bg-dark); --auth-btn-text-dark: var(--button-secondary-text-dark);
-    --auth-btn-hover-bg-dark: var(--button-secondary-hover-bg-dark);
+    --auth-btn-bg-dark: var(--button-secondary-bg-dark); --auth-btn-text-dark: var(--auth-btn-text-dark);
+    --auth-btn-hover-bg-dark: var(--auth-btn-hover-bg-dark);
 
 
     /* 기본값 설정 */
@@ -87,7 +87,8 @@ body.dark-theme {
     --additional-task-bg: var(--additional-task-bg-dark); --additional-task-border: var(--additional-task-border-dark);
     --chart-grid-color: var(--chart-grid-color-dark); --chart-font-color: var(--chart-font-color-dark);
     --stats-visual-item-bg: var(--stats-visual-item-bg-dark);
-    --app-mode-toggle-bg: var(--app-mode-toggle-bg-dark); --app-mode-toggle-text: var(--app-mode-toggle-text-dark);
+    --app-mode-toggle-bg: var(--app-mode-toggle-bg-dark);
+    --app-mode-toggle-text: var(--app-mode-toggle-text-dark);
     --focus-outline-color: var(--focus-outline-color-dark);
     --auth-btn-bg: var(--auth-btn-bg-dark); --auth-btn-text: var(--auth-btn-text-dark);
     --auth-btn-hover-bg: var(--auth-btn-hover-bg-dark);
@@ -676,4 +677,71 @@ body.simple-mode .task-item {
     background-color: transparent !important;
     box-shadow: none !important;
     padding: 0 !important;
+}
+
+/* --- Toast Message Styles (v1.13.1-toast-message) --- */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 400px;
+    pointer-events: none; /* 클릭 이벤트 방지 */
+}
+
+.toast-message {
+    background-color: var(--button-secondary-bg);
+    color: var(--button-secondary-text);
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+    font-size: 0.9em;
+    text-align: center;
+    width: fit-content; /* 내용에 따라 너비 조정 */
+    min-width: 150px;
+    max-width: 90%;
+}
+
+.toast-message.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Type-specific colors for toasts */
+.toast-info {
+    background-color: var(--button-primary-bg);
+    color: var(--button-text-color);
+}
+.toast-success {
+    background-color: #28a745; /* Green */
+    color: white;
+}
+.toast-warning {
+    background-color: #ffc107; /* Yellow */
+    color: #343a40;
+}
+.toast-error {
+    background-color: #dc3545; /* Red */
+    color: white;
+}
+
+/* Mobile adjustments for toasts */
+@media (max-width: 640px) {
+    #toast-container {
+        bottom: 10px;
+        max-width: 95%;
+    }
+    .toast-message {
+        padding: 10px 15px;
+        font-size: 0.85em;
+    }
 }
