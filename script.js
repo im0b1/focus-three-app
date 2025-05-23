@@ -1,6 +1,6 @@
-// script.js - v1.17.2-fix-auth-ui-typo - FULL CODE
+// script.js - v1.18.0-feedback-rendering-fix - FULL CODE
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded and parsed (v1.17.2)");
+    console.log("DOM fully loaded and parsed (v1.18.0)");
 
     // --- Firebase Configuration ---
     const firebaseConfig = {
@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await userDocRef.set({ appSettings: settingsToSave }, { merge: true });
             console.log("Firestore: App settings saved for user", currentUser.uid);
-            showUserFeedback("클라우드 설정이 저장되었습니다.", 'success');
+            // showUserFeedback("클라우드 설정이 저장되었습니다.", 'success'); // 너무 자주 알림 방지
         } catch (error) { showUserFeedback(`클라우드 설정 저장 실패: ${error.message}`, 'error'); console.error("Error saving app settings to Firestore for " + currentUser.uid + ":", error); }
     }
 
@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     announceToScreenReader("클라우드 설정이 업데이트되었습니다.");
                     showUserFeedback("클라우드 설정이 업데이트되었습니다.", 'info');
                 } else {
-                    console.log("Firestore: AppSettings remote update but no change detected or already synced.");
+                    console.log("Firestore: AppSettings remote update but no change detected or already synced. Not showing feedback.");
                 }
             } else {
                 console.log("Firestore: Document or appSettings field not found in snapshot for user", userId);
@@ -373,7 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     announceToScreenReader("핵심 할 일 목록이 클라우드에서 업데이트되었습니다.");
                     showUserFeedback("핵심 할 일 목록이 클라우드에서 업데이트되었습니다.", 'info');
                 } else {
-                    console.log("Firestore: Tasks remote update but no change detected or already synced.");
+                    console.log("Firestore: Tasks remote update but no change detected or already synced. Not showing feedback.");
                 }
             } else if (doc.exists && !doc.data()?.tasksData) {
                 // tasksData 필드가 없는 경우 (초기 상태 등)
@@ -407,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     announceToScreenReader("추가 할 일 목록이 클라우드에서 업데이트되었습니다.");
                     showUserFeedback("추가 할 일 목록이 클라우드에서 업데이트되었습니다.", 'info');
                 } else {
-                    console.log("Firestore: Additional tasks remote update but no change detected or already synced.");
+                    console.log("Firestore: Additional tasks remote update but no change detected or already synced. Not showing feedback.");
                 }
             } else if (doc.exists && !doc.data()?.additionalTasksData) {
                 console.log("Firestore: additionalTasksData field not found, initializing locally.");
@@ -442,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     announceToScreenReader("기록이 클라우드에서 업데이트되었습니다.");
                     showUserFeedback("기록이 클라우드에서 업데이트되었습니다.", 'info');
                 } else {
-                    console.log("Firestore: History remote update but no change detected or already synced.");
+                    console.log("Firestore: History remote update but no change detected or already synced. Not showing feedback.");
                 }
             } else if (doc.exists && !doc.data()?.historyData) {
                 console.log("Firestore: historyData field not found, initializing locally.");
@@ -595,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const signupBtnEl = document.getElementById('signup-btn');
         const userEmailSpanEl = document.getElementById('user-email');
         const logoutBtnEl = document.getElementById('logout-btn');
-        const cloudSyncStatusDivEl = document.getElementById('cloud-sync-status'); // Corrected variable name here
+        const cloudSyncStatusDivEl = document.getElementById('cloud-sync-status');
 
         if (!authStatusContainerEl || !loginBtnEl || !signupBtnEl || !userEmailSpanEl || !logoutBtnEl || !cloudSyncStatusDivEl) {
             console.error("Auth UI elements missing."); return;
@@ -611,7 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!navigator.onLine) {
             cloudSyncStatusDivEl.textContent = '현재 오프라인입니다.';
         } else if (isLoggedIn) {
-            cloudSyncStatusDivEl.textContent = `로그인 됨 (${userEmailSpanEl.textContent}). 클라우드 동기화 활성.`; // Corrected variable name here
+            cloudSyncStatusDivEl.textContent = `로그인 됨 (${userEmailSpanEl.textContent}). 클라우드 동기화 활성.`;
         } else {
             cloudSyncStatusDivEl.textContent = '로그인하여 데이터를 클라우드에 동기화하세요.';
         }
@@ -790,10 +790,14 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('oneulSetAdditionalTasks', JSON.stringify(additionalTasks));
         localStorage.setItem('oneulSetLastDate', getTodayDateString());
         localStorage.setItem('oneulSetHistory', JSON.stringify(history));
+
+        // UI 갱신은 필요한 경우에만 명시적으로 호출
         updateStats();
-        const chartCanvasEl = document.getElementById('daily-achievement-chart');
-        const currentDailyAchievementChartCtx = chartCanvasEl ? chartCanvasEl.getContext('2d') : null;
-        if (currentAppMode === 'focus' && currentDailyAchievementChartCtx) renderStatsVisuals();
+        if (currentAppMode === 'focus') {
+            const chartCanvasEl = document.getElementById('daily-achievement-chart');
+            const currentDailyAchievementChartCtx = chartCanvasEl ? chartCanvasEl.getContext('2d') : null;
+            if (currentDailyAchievementChartCtx) renderStatsVisuals();
+        }
 
         // 사용자 로그인 중이고, 오프라인이 아닌 경우에만 Firestore에 저장
         if (currentUser && firestoreDB && navigator.onLine) {
@@ -1516,7 +1520,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 초기화 실행 ---
     async function initializeApp() {
-        console.log("Initializing app (v1.17.2 - Auth UI Typo Fix)...");
+        console.log("Initializing app (v1.18.0 - Feedback and Rendering Fix)...");
         if (!document.getElementById('current-date') || !document.querySelector('.task-list') || !document.getElementById('auth-status')) {
             document.body.innerHTML = '<div style="text-align:center;padding:20px;">앱 로딩 오류: 필수 DOM 요소 누락. (DOM_MISSING)</div>'; return;
         }
