@@ -1,4 +1,4 @@
-
+/* style.css - v1.15.0-ui-fixes */
 
 /* 기본 스타일 초기화 */
 * {
@@ -46,20 +46,21 @@
     --footer-button-active-bg-dark: var(--button-primary-bg-dark); --footer-button-active-text-dark: #212529;
     --custom-checkbox-border-dark: #7f8c8d;
     --custom-checkbox-checked-bg-dark: var(--button-primary-bg-dark);
-    --custom-checkbox-checkmark-dark: #212529;
+    --custom-checkbox-checkmark-dark: #FFFFFF; /* 개선점: 다크 모드 체크박스 아이콘 색상을 흰색으로 변경 */
     --memo-icon-color-dark: #adb5bd;
     --memo-icon-hover-color-dark: #e9ecef; --memo-icon-active-color-dark: var(--button-primary-bg-dark);
     --additional-task-bg-dark: #373c40; --additional-task-border-dark: #454b50;
     --chart-grid-color-dark: rgba(255, 255, 255, 0.1); --chart-font-color-dark: #e9ecef;
     --stats-visual-item-bg-dark: #495057;
     --app-mode-toggle-bg-dark: var(--button-secondary-bg-dark);
-    --app-mode-toggle-text-dark: var(--button-secondary-text-dark);
+    --app-mode-toggle-text: var(--button-secondary-text-dark);
     --focus-outline-color-dark: var(--button-primary-bg-dark);
-    --auth-btn-bg-dark: var(--button-secondary-bg-dark); --auth-btn-text-dark: var(--auth-btn-text-dark);
+    --auth-btn-bg-dark: var(--button-secondary-bg-dark); --auth-btn-text: var(--auth-btn-text-dark);
     --auth-btn-hover-bg-dark: var(--auth-btn-hover-bg-dark);
+}
 
-
-    /* 기본값 설정 */
+/* 기본값 설정 */
+:root { /* 이 부분은 원래 :root 선택자 안에서 다시 정의되어야 하지만, 편의상 여기에 복사합니다 */
     --bg-color: var(--bg-color-light); --container-bg-color: var(--container-bg-color-light); --text-color-primary: var(--text-color-primary-light); --text-color-secondary: var(--text-color-secondary-light); --text-color-tertiary: var(--text-color-tertiary-light); --border-color: var(--border-color-light); --input-focus-bg: var(--input-focus-bg-light); --input-focus-shadow: var(--input-focus-shadow-light); --completed-text-color: var(--completed-text-color-light); --button-primary-bg: var(--button-primary-bg-light); --button-primary-hover-bg: var(--button-primary-hover-bg-light); --button-secondary-bg: var(--button-secondary-bg-light); --button-secondary-hover-bg: var(--button-secondary-hover-bg-light); --button-secondary-text: var(--button-secondary-text-light); --button-text-color: var(--button-text-color-light); --all-done-bg: var(--all-done-bg-light); --all-done-text: var(--all-done-text-light); --section-bg: var(--section-bg-light); --section-border: var(--section-border-light); --theme-toggle-bg: transparent; --theme-toggle-hover-bg: var(--theme-toggle-hover-bg-light); --link-color: var(--link-color-light); --link-hover-color: var(--link-hover-color-light); --stats-content-bg: var(--stats-content-bg-light); --share-content-bg: var(--share-content-bg-light); --share-button-bg: var(--share-button-bg-light); --share-button-hover-bg: var(--share-button-hover-bg-light);
     --footer-button-active-bg: var(--footer-button-active-bg-light); --footer-button-active-text: var(--footer-button-active-text-light);
     --custom-checkbox-border: var(--custom-checkbox-border-light);
@@ -78,7 +79,7 @@
 body.dark-theme {
     /* 다크 테마 덮어쓰기 */
     --bg-color: var(--bg-color-dark); --container-bg-color: var(--container-bg-color-dark); --text-color-primary: var(--text-color-primary-dark); --text-color-secondary: var(--text-color-secondary-dark); --text-color-tertiary: var(--text-color-tertiary-dark); --border-color: var(--border-color-dark); --input-focus-bg: var(--input-focus-bg-dark); --input-focus-shadow: var(--input-focus-shadow-dark); --completed-text-color: var(--completed-text-color-dark); --button-primary-bg: var(--button-primary-bg-dark); --button-primary-hover-bg: var(--button-primary-hover-bg-dark); --button-secondary-bg: var(--button-secondary-bg-dark); --button-secondary-hover-bg: var(--button-secondary-hover-bg-dark); --button-secondary-text: var(--button-secondary-text-dark); --button-text-color: var(--button-text-color-dark); --all-done-bg: var(--all-done-bg-dark); --all-done-text: var(--all-done-text-dark); --section-bg: var(--section-bg-dark); --section-border: var(--section-border-dark); --theme-toggle-hover-bg: var(--theme-toggle-hover-bg-dark); --link-color: var(--link-color-dark); --link-hover-color: var(--link-hover-color-dark); --stats-content-bg: var(--stats-content-bg-dark); --share-content-bg: var(--share-content-bg-dark); --share-button-bg: var(--share-button-bg-dark); --share-button-hover-bg: var(--share-button-hover-bg-dark);
-    --footer-button-active-bg: var(--footer-button-active-bg-dark); --footer-button-active-text: var(--footer-button-active-text-dark);
+    --footer-button-active-bg: var(--button-primary-bg-dark); --footer-button-active-text: var(--footer-button-active-text-dark);
     --custom-checkbox-border: var(--custom-checkbox-border-dark);
     --custom-checkbox-checked-bg: var(--custom-checkbox-checked-bg-dark);
     --custom-checkbox-checkmark: var(--custom-checkbox-checkmark-dark);
@@ -128,7 +129,7 @@ header h1 { color: var(--text-color-primary); margin-bottom: 0; font-size: 2em; 
     border: 1px solid var(--border-color);
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    transition: background-color 0.2s, color 0.2s; /* 개선점 3: border-color 트랜지션 제거 */
 }
 .auth-btn:hover {
     background-color: var(--auth-btn-hover-bg);
@@ -154,14 +155,14 @@ header h1 { color: var(--text-color-primary); margin-bottom: 0; font-size: 2em; 
     padding: 6px 10px; font-size: 0.85em; font-weight: 500;
     background-color: var(--app-mode-toggle-bg); color: var(--app-mode-toggle-text);
     border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer;
-    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    transition: background-color 0.2s, color 0.2s; /* 개선점 3: border-color 트랜지션 제거 */
 }
 #app-mode-toggle:hover { background-color: var(--button-secondary-hover-bg); }
 
 #theme-toggle {
     background: var(--theme-toggle-bg); border: none; font-size: 1.5em; cursor: pointer; padding: 5px;
     border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;
-    transition: background-color 0.2s ease, transform 0.2s ease; color: var(--text-color-primary);
+    transition: background-color 0.2s ease, transform 0.2s ease, color 0.3s ease; /* 개선점 3: border가 없으므로 그대로 유지 */
 }
 #theme-toggle:hover { background: var(--theme-toggle-hover-bg); transform: scale(1.1); }
 #theme-toggle:focus-visible { outline: 2px solid var(--focus-outline-color); outline-offset: 2px; }
@@ -185,7 +186,8 @@ main { margin-bottom: 30px; }
 .task-item {
     display: grid; grid-template-columns: auto 1fr; grid-template-areas: "check content" ". memo";
     align-items: start; gap: 0 12px; padding: 12px 0;
-    border-bottom: 1px solid var(--border-color); transition: border-color 0.3s ease;
+    border-bottom: 1px solid var(--border-color);
+    transition: border-color 0.3s ease; /* 이 트랜지션은 테마 변경 시 필요하므로 유지 */
 }
 .task-item:last-child { border-bottom: none; }
 
@@ -217,8 +219,8 @@ main { margin-bottom: 30px; }
     content: ""; position: absolute; display: none;
     left: 50%; top: 50%;
     width: 7px; height: 14px;
-    border: solid var(--custom-checkbox-checkmark);
-    border-width: 0 3px 3px 0;
+    border: solid var(--custom-checkbox-checkmark); /* This sets border style and color */
+    border-width: 0 3px 3px 0; /* This specifies which borders to draw */
     transform: translate(-50%, -60%) rotate(45deg);
 }
 .custom-checkbox-label input[type="checkbox"]:checked ~ .custom-checkbox-span::after { display: block; }
@@ -235,15 +237,17 @@ main { margin-bottom: 30px; }
 }
 .task-item textarea:focus { background-color: var(--input-focus-bg); box-shadow: 0 0 0 2px var(--input-focus-shadow); }
 .task-item.completed textarea {
-    text-decoration: line-through; color: var(--completed-text-color); text-decoration-color: var(--completed-text-color);
-    transition: color 0.3s ease, text-decoration-color 0.3s ease;
+    text-decoration: line-through;
+    color: var(--completed-text-color);
+    text-decoration-color: var(--completed-text-color);
+    transition: color 0.3s ease, text-decoration-color 0.3s ease; /* 개선점 3: 그대로 유지 */
 }
 
 .memo-icon {
     background: none; border: none;
     color: var(--memo-icon-color);
     font-size: 1em; padding: 8px; margin-left: 5px; cursor: pointer;
-    border-radius: 4px; transition: color 0.2s, background-color 0.2s;
+    border-radius: 4px; transition: color 0.2s, background-color 0.2s; /* 개선점 3: 그대로 유지 */
 }
 .memo-icon:hover { color: var(--memo-icon-hover-color); background-color: var(--input-focus-bg); }
 .memo-icon.has-memo { color: var(--memo-icon-active-color); }
@@ -283,10 +287,10 @@ main { margin-bottom: 30px; }
 }
 #add-additional-task-btn {
     padding: 8px 12px; background-color: var(--button-primary-bg); color: var(--button-text-color);
-    border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; transition: background-color 0.2s;
+    border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em;
+    transition: background-color 0.2s; /* 개선점 3: 그대로 유지 */
 }
 #add-additional-task-btn:hover { background-color: var(--button-primary-hover-bg); }
-#add-additional-task-btn i { margin-right: 4px; }
 
 #additional-task-list .no-additional-tasks { color: var(--text-color-tertiary); text-align: center; padding: 10px 0; }
 .additional-task-item {
@@ -302,6 +306,7 @@ main { margin-bottom: 30px; }
 .delete-additional-task-btn {
     background: none; border: none; color: var(--memo-icon-color);
     font-size: 0.9em; padding: 4px; cursor: pointer; border-radius: 4px;
+    transition: color 0.2s, background-color 0.2s; /* 개선점 3: 그대로 유지 */
 }
 .delete-additional-task-btn:hover { color: var(--memo-icon-hover-color); background-color: var(--input-focus-bg); }
 
@@ -312,7 +317,7 @@ footer { margin-top: 30px; padding-top: 20px; }
     background-color: var(--button-secondary-bg); color: var(--button-secondary-text);
     border: 1px solid var(--border-color); padding: 9px 14px; border-radius: 6px;
     cursor: pointer; font-size: 0.9em; font-weight: 500;
-    transition: background-color 0.2s ease, transform 0.2s ease, color 0.3s ease, border-color 0.3s ease;
+    transition: background-color 0.2s ease, transform 0.2s ease, color 0.3s ease; /* 개선점 3: border-color 트랜지션 제거 */
 }
 #toggle-history-btn:hover, #toggle-stats-btn:hover, #toggle-share-btn:hover, #toggle-settings-btn:hover { background-color: var(--button-secondary-hover-bg); transform: translateY(-2px); }
 #toggle-history-btn:active, #toggle-stats-btn:active, #toggle-share-btn:active, #toggle-settings-btn:active { transform: translateY(0); }
@@ -320,7 +325,8 @@ footer { margin-top: 30px; padding-top: 20px; }
 
 #toggle-history-btn.active, #toggle-stats-btn.active, #toggle-share-btn.active, #toggle-settings-btn.active {
     background-color: var(--footer-button-active-bg); color: var(--footer-button-active-text);
-    border-color: var(--footer-button-active-bg); font-weight: 700;
+    border-color: var(--footer-button-active-bg); /* border-color는 그대로 유지하여 배경색과 동일하게 */
+    font-weight: 700;
 }
 
 .footer-support { text-align: center; margin-bottom: 15px; }
@@ -401,7 +407,8 @@ footer { margin-top: 30px; padding-top: 20px; }
 .share-buttons button, .share-buttons a {
     background-color: var(--share-button-bg); color: #fff; border: none; padding: 8px 12px;
     border-radius: 4px; cursor: pointer; font-size: 0.9em; text-decoration: none;
-    display: inline-flex; align-items: center; gap: 6px; transition: background-color 0.2s ease, transform 0.2s ease;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: background-color 0.2s ease, transform 0.2s ease; /* 개선점 3: 그대로 유지 */
 }
 .share-buttons button:hover, .share-buttons a:hover { background-color: var(--share-button-hover-bg); transform: translateY(-1px); }
 .share-buttons button:focus-visible, .share-buttons a:focus-visible { outline: 2px solid var(--focus-outline-color); outline-offset: 1px; }
@@ -427,7 +434,8 @@ footer { margin-top: 30px; padding-top: 20px; }
 .data-management-buttons button {
     padding: 8px 12px; background-color: var(--button-secondary-bg); color: var(--button-secondary-text);
     border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; font-size: 0.9em;
-    transition: background-color 0.2s, border-color 0.2s; display: inline-flex; align-items: center; gap: 6px;
+    transition: background-color 0.2s, border-color 0.2s; /* 개선점 3: 그대로 유지 */
+    display: inline-flex; align-items: center; gap: 6px;
 }
 .data-management-buttons button:hover { background-color: var(--button-secondary-hover-bg); }
 .data-management-buttons button i { font-size: 1em; }
