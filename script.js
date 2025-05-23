@@ -1,6 +1,6 @@
-// script.js - v1.20.0-scope-fix - FULL CODE
+// script.js - v1.17.1-firestore-debug - FULL CODE
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded and parsed (v1.20.0)");
+    console.log("DOM fully loaded and parsed (v1.17.1)");
 
     // --- Firebase Configuration ---
     const firebaseConfig = {
@@ -13,30 +13,12 @@ document.addEventListener('DOMContentLoaded', () => {
         measurementId: "G-J2HZ3RJ6MQ"
     };
 
-    // --- 전역 변수 (이제는 DOMContentLoaded 스코프 내) ---
-    let firebaseApp, firebaseAuth, firestoreDB;
-    let MAX_TASKS_CURRENT_MODE = 3;
-    let tasks = [];
-    let additionalTasks = [];
-    let history = [];
-    let achievementChart = null;
-    let currentAppMode = 'simple';
-    let currentTheme = 'dark';
-    let focusModeTaskCountSetting = 3;
-    let shareOptions = { includeAdditional: false, includeMemos: false };
-    let currentUser = null;
-    let userSettingsUnsubscribe = null;
-    let userTasksUnsubscribe = null;
-    let userAdditionalTasksUnsubscribe = null;
-    let userHistoryUnsubscribe = null;
-    let isInitialFirestoreLoadComplete = false;
-
-    const APP_VERSION_DATA_FORMAT = "1.14.1-content-load-fix-data";
-
     // --- Firebase SDK 초기화 ---
+    let firebaseApp, firebaseAuth, firestoreDB;
     try {
+        // Firebase 앱이 이미 초기화되었는지 확인하여 중복 초기화 방지
         if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-            if (firebase.apps.length === 0) {
+            if (firebase.apps.length === 0) { // 앱이 초기화되지 않은 경우에만 초기화
                 console.log("Firebase: Initializing new Firebase app instance.");
                 firebaseApp = firebase.initializeApp(firebaseConfig);
                 if (firebase.auth) {
@@ -48,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (firebase.firestore) {
                     firestoreDB = firebase.firestore();
                     console.log("Firebase: Firestore module available.");
+                    // Firestore 영구 저장 활성화 (오류 시 경고)
                     if (firestoreDB) firestoreDB.enablePersistence({ synchronizeTabs: true })
                         .then(() => console.log("Firestore persistence enabled."))
                         .catch(err => {
@@ -67,11 +50,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 console.log("Firebase: SDK already initialized. Reusing existing app instance.");
-                firebaseApp = firebase.app();
+                firebaseApp = firebase.app(); // 이미 초기화된 앱 인스턴스 사용
                 if (firebase.auth) firebaseAuth = firebase.auth();
                 if (firebase.firestore) firestoreDB = firebase.firestore();
             }
         } else {
+            // Firebase 객체 자체가 로드되지 않은 경우
             console.error("Firebase SDK (firebase object) not loaded. Running in local-only mode.");
             const cloudStatus = document.getElementById('cloud-sync-status');
             if(cloudStatus) cloudStatus.textContent = '클라우드 서비스 사용 불가: Firebase SDK 로드 실패.';
@@ -84,11 +68,34 @@ document.addEventListener('DOMContentLoaded', () => {
         showUserFeedback('클라우드 서비스 사용 불가: Firebase 초기화 중 치명적인 오류 발생. 오프라인 모드로 실행됩니다.', 'error');
     }
 
+    // --- 전역 변수 ---
+    let MAX_TASKS_CURRENT_MODE = 3;
+    let tasks = [];
+    let additionalTasks = [];
+    let history = [];
+    let achievementChart = null;
+    let currentAppMode = 'simple';
+    let currentTheme = 'dark';
+    let focusModeTaskCountSetting = 3;
+    let shareOptions = { includeAdditional: false, includeMemos: false };
+    let currentUser = null;
+    let userSettingsUnsubscribe = null;
+    let userTasksUnsubscribe = null;
+    let userAdditionalTasksUnsubscribe = null;
+    let userHistoryUnsubscribe = null;
+    let isInitialFirestoreLoadComplete = false;
+    // isUpdatingFromFirestore 플래그는 이제 snapshot.metadata.hasPendingWrites로 대체되어 제거함.
+    // 기존의 `saveState`에서 `isUpdatingFromFirestore`로 쓰기 방지 로직은 필요 없음.
+
+    const APP_VERSION_DATA_FORMAT = "1.14.1-content-load-fix-data"; // 기존 버전 유지 (데이터 포맷 변경 없음)
+
     // --- 유틸리티 함수 ---
     function announceToScreenReader(message) {
         const liveRegionEl = document.getElementById('live-region');
         if (liveRegionEl) {
             liveRegionEl.textContent = message;
+            // 스크린 리더가 바로 읽을 수 있도록 메시지 설정 후 바로 리셋하지 않음 (aria-atomic="true"와 함께 사용)
+            // setTimeout(() => { if (liveRegionEl) liveRegionEl.textContent = ''; }, 3000);
         }
     }
 
@@ -100,11 +107,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function showUserFeedback(message, type = 'info') {
         console.log(`[Feedback - ${type.toUpperCase()}] ${message}`);
 
+        // 스크린 리더 알림
         const liveRegionEl = document.getElementById('live-region');
         if (liveRegionEl) {
             liveRegionEl.textContent = message;
+            // 스크린 리더가 바로 읽을 수 있도록 메시지 설정 후 바로 리셋하지 않음 (aria-atomic="true"와 함께 사용)
+            // setTimeout(() => { if (liveRegionEl) liveRegionEl.textContent = ''; }, 3000);
         }
 
+        // 토스트 메시지 컨테이너 생성 또는 가져오기
         const toastContainer = document.getElementById('toast-container') || (() => {
             const div = document.createElement('div');
             div.id = 'toast-container';
@@ -112,19 +123,23 @@ document.addEventListener('DOMContentLoaded', () => {
             return div;
         })();
 
+        // 토스트 메시지 요소 생성
         const toast = document.createElement('div');
         toast.className = `toast-message toast-${type}`;
         toast.textContent = message;
         toastContainer.appendChild(toast);
 
+        // 토스트 메시지 표시 애니메이션 (opacity와 transform 변경)
+        // setTimeout을 사용하여 클래스 추가 지연
         setTimeout(() => {
             toast.classList.add('show');
-        }, 10);
+        }, 10); // DOM에 추가된 후 약간의 지연을 주어 트랜지션 적용
 
+        // 토스트 메시지 제거
         setTimeout(() => {
-            toast.classList.remove('show');
-            toast.addEventListener('transitionend', () => toast.remove(), { once: true });
-        }, 3500);
+            toast.classList.remove('show'); // 숨김 애니메이션 시작
+            toast.addEventListener('transitionend', () => toast.remove(), { once: true }); // 애니메이션 종료 후 제거
+        }, 3500); // 3.5초 후 숨김 시작 (표시 딜레이 + 애니메이션 시간 고려)
     }
 
     // --- PWA: 서비스 워커 등록 ---
@@ -247,51 +262,20 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await userDocRef.set({ appSettings: settingsToSave }, { merge: true });
             console.log("Firestore: App settings saved for user", currentUser.uid);
-            // showUserFeedback("클라우드 설정이 저장되었습니다.", 'success'); // 너무 자주 알림 방지
+            showUserFeedback("클라우드 설정이 저장되었습니다.", 'success');
         } catch (error) { showUserFeedback(`클라우드 설정 저장 실패: ${error.message}`, 'error'); console.error("Error saving app settings to Firestore for " + currentUser.uid + ":", error); }
     }
 
-    // --- 모든 데이터 섹션을 하나의 배치(Batch)로 Firestore에 동기화하는 함수 ---
-    async function syncDataToFirestore() {
-        if (!currentUser) { console.warn("syncDataToFirestore: No current user logged in."); return; }
-        if (!firestoreDB) { console.warn("syncDataToFirestore: Firestore DB is not initialized."); return; }
-        if (!navigator.onLine) { console.warn("syncDataToFirestore: Offline. Data not saved to Firestore, will sync when online."); showUserFeedback("오프라인: 데이터는 네트워크 연결 시 동기화됩니다.", 'info'); return; }
-
-        const userDocRef = getUserDocRef(currentUser.uid);
-        if (!userDocRef) { console.error("syncDataToFirestore: User doc ref is null, cannot sync data."); return; }
-
-        console.log("Firestore: Attempting to sync all data (tasks, additional tasks, history) using batch write.");
-        const batch = firestoreDB.batch();
-
-        // tasksData 업데이트
-        batch.set(userDocRef, { tasksData: { items: tasks, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
-
-        // additionalTasksData 업데이트
-        batch.set(userDocRef, { additionalTasksData: { items: additionalTasks, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
-
-        // historyData 업데이트
-        batch.set(userDocRef, { historyData: { items: history, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
-
-        try {
-            await batch.commit();
-            console.log("Firestore: All data (tasks, additional tasks, history) committed in a single batch.");
-            // showUserFeedback("모든 할 일 데이터가 클라우드에 동기화되었습니다.", 'success'); // saveState에서 이미 피드백을 주므로 중복 방지
-        } catch (error) {
-            showUserFeedback(`클라우드 데이터 동기화 실패: ${error.message}`, 'error');
-            console.error("Error syncing all data to Firestore:", error);
-        }
-    }
-
-    // --- Firestore 리스너 구현 (메모 버그 수정 포함) ---
     function listenToAppSettingsChanges(userId) {
         if (userSettingsUnsubscribe) userSettingsUnsubscribe();
         const userDocRef = getUserDocRef(userId);
         if (!userDocRef) { console.warn("listenToAppSettingsChanges: User doc ref is null, cannot set listener."); return; }
         console.log("Setting up Firestore listener for appSettings:", userId);
         userSettingsUnsubscribe = userDocRef.onSnapshot(doc => {
+            // 변경 사항이 로컬에서 발생한 쓰기 작업으로 인해 보류 중인 경우 (아직 서버에 반영되지 않았거나 이미 반영된 로컬 변경)
             if (doc.metadata.hasPendingWrites && doc.metadata.fromCache) {
                  console.log("Firestore: Local change detected for appSettings, skipping UI re-render.");
-                 return;
+                 return; // 로컬에서 변경된 내용은 이미 UI에 반영되었으므로 다시 렌더링하지 않음
             }
 
             if (doc.exists && doc.data()?.appSettings) {
@@ -308,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     announceToScreenReader("클라우드 설정이 업데이트되었습니다.");
                     showUserFeedback("클라우드 설정이 업데이트되었습니다.", 'info');
                 } else {
-                    console.log("Firestore: AppSettings remote update but no change detected or already synced. Not showing feedback.");
+                    console.log("Firestore: AppSettings remote update but no change detected or already synced.");
                 }
             } else {
                 console.log("Firestore: Document or appSettings field not found in snapshot for user", userId);
@@ -316,33 +300,85 @@ document.addEventListener('DOMContentLoaded', () => {
         }, error => { showUserFeedback(`클라우드 설정 동기화 오류: ${error.message}`, 'error'); console.error("Error in appSettings listener for " + userId + ":", error); });
     }
 
+    async function saveTasksToFirestore() {
+        if (!currentUser) { console.warn("saveTasksToFirestore: No current user logged in."); return; }
+        if (!firestoreDB) { console.warn("saveTasksToFirestore: Firestore DB is not initialized."); return; }
+        if (!navigator.onLine) { console.warn("saveTasksToFirestore: Offline, tasks not saved to Firestore."); return; }
+
+        const userDocRef = getUserDocRef(currentUser.uid);
+        if (!userDocRef) { console.error("saveTasksToFirestore: User doc ref is null, cannot save tasks."); return; }
+
+        console.log("Firestore: Attempting to save tasks array.");
+        try {
+            await userDocRef.set({ tasksData: { items: tasks, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
+            console.log("Firestore: Tasks array saved.");
+            // showUserFeedback("핵심 할 일 클라우드 저장 성공", 'success'); // 너무 자주 알림 방지
+        } catch (error) { showUserFeedback(`핵심 할 일 클라우드 저장 실패: ${error.message}`, 'error'); console.error("Error saving tasks array to Firestore:", error); }
+    }
+    async function saveAdditionalTasksToFirestore() {
+        if (!currentUser) { console.warn("saveAdditionalTasksToFirestore: No current user logged in."); return; }
+        if (!firestoreDB) { console.warn("saveAdditionalTasksToFirestore: Firestore DB is not initialized."); return; }
+        if (!navigator.onLine) { console.warn("saveAdditionalTasksToFirestore: Offline, additional tasks not saved to Firestore."); return; }
+
+        const userDocRef = getUserDocRef(currentUser.uid);
+        if (!userDocRef) { console.error("saveAdditionalTasksToFirestore: User doc ref is null, cannot save additional tasks."); return; }
+
+        console.log("Firestore: Attempting to save additional tasks array.");
+        try {
+            await userDocRef.set({ additionalTasksData: { items: additionalTasks, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
+            console.log("Firestore: Additional tasks array saved.");
+            // showUserFeedback("추가 할 일 클라우드 저장 성공", 'success'); // 너무 자주 알림 방지
+        } catch (error) { showUserFeedback(`추가 할 일 클라우드 저장 실패: ${error.message}`, 'error'); console.error("Error saving additional tasks array to Firestore:", error); }
+
+    }
+    async function saveHistoryToFirestore() {
+        if (!currentUser) { console.warn("saveHistoryToFirestore: No current user logged in."); return; }
+        if (!firestoreDB) { console.warn("saveHistoryToFirestore: Firestore DB is not initialized."); return; }
+        if (!navigator.onLine) { console.warn("saveHistoryToFirestore: Offline, history not saved to Firestore."); return; }
+
+        const userDocRef = getUserDocRef(currentUser.uid);
+        if (!userDocRef) { console.error("saveHistoryToFirestore: User doc ref is null, cannot save history."); return; }
+
+        console.log("Firestore: Attempting to save history array.");
+        try {
+            await userDocRef.set({ historyData: { items: history, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
+            console.log("Firestore: History array saved.");
+            // showUserFeedback("기록 클라우드 저장 성공", 'success'); // 너무 자주 알림 방지
+        } catch (error) { showUserFeedback(`기록 클라우드 저장 실패: ${error.message}`, 'error'); console.error("Error saving history array to Firestore:", error); }
+    }
+
+    // --- Firestore 리스너 구현 (메모 버그 수정 포함) ---
     function listenToTasksChanges(userId) {
         if (userTasksUnsubscribe) userTasksUnsubscribe();
         const userDocRef = getUserDocRef(userId);
         if (!userDocRef) { console.warn("listenToTasksChanges: User doc ref is null, cannot set listener."); return; }
         console.log("Setting up Firestore listener for tasksData:", userId);
         userTasksUnsubscribe = userDocRef.onSnapshot(doc => {
+            // 변경 사항이 로컬에서 발생한 쓰기 작업으로 인해 보류 중인 경우 (아직 서버에 반영되지 않았거나 이미 반영된 로컬 변경)
             if (doc.metadata.hasPendingWrites && doc.metadata.fromCache) {
                  console.log("Firestore: Local change detected for tasksData, skipping UI re-render.");
-                 return;
+                 return; // 로컬에서 변경된 내용은 이미 UI에 반영되었으므로 다시 렌더링하지 않음
             }
 
             if (doc.exists && doc.data()?.tasksData?.items) {
                 const remoteTasks = doc.data().tasksData.items;
+                // 로컬 데이터와 원격 데이터 비교 (간단한 JSON 문자열 비교)
                 if (JSON.stringify(tasks) !== JSON.stringify(remoteTasks)) {
                     console.log("Firestore: Tasks changed by remote, updating local state and UI.");
                     tasks = remoteTasks;
+                    // 데이터 무결성 검사: tasks 배열의 길이를 5개로 유지 (초기화 또는 슬라이싱)
                     while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
                     if (tasks.length > 5) tasks = tasks.slice(0,5);
-                    renderTasks();
+                    renderTasks(); // 원격 변경 시만 전체 렌더링
                     announceToScreenReader("핵심 할 일 목록이 클라우드에서 업데이트되었습니다.");
                     showUserFeedback("핵심 할 일 목록이 클라우드에서 업데이트되었습니다.", 'info');
                 } else {
-                    console.log("Firestore: Tasks remote update but no change detected or already synced. Not showing feedback.");
+                    console.log("Firestore: Tasks remote update but no change detected or already synced.");
                 }
             } else if (doc.exists && !doc.data()?.tasksData) {
+                // tasksData 필드가 없는 경우 (초기 상태 등)
                 console.log("Firestore: tasksData field not found in user document, initializing locally.");
-                initializeTasks();
+                initializeTasks(); // 로컬 데이터 초기화
                 renderTasks();
             } else {
                 console.log("Firestore: Document or tasksData field not found in snapshot for user", userId);
@@ -356,6 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!userDocRef) { console.warn("listenToAdditionalTasksChanges: User doc ref is null, cannot set listener."); return; }
         console.log("Setting up Firestore listener for additionalTasksData:", userId);
         userAdditionalTasksUnsubscribe = userDocRef.onSnapshot(doc => {
+            // 변경 사항이 로컬에서 발생한 쓰기 작업으로 인해 보류 중인 경우
             if (doc.metadata.hasPendingWrites && doc.metadata.fromCache) {
                 console.log("Firestore: Local change detected for additionalTasksData, skipping UI re-render.");
                 return;
@@ -370,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     announceToScreenReader("추가 할 일 목록이 클라우드에서 업데이트되었습니다.");
                     showUserFeedback("추가 할 일 목록이 클라우드에서 업데이트되었습니다.", 'info');
                 } else {
-                    console.log("Firestore: Additional tasks remote update but no change detected or already synced. Not showing feedback.");
+                    console.log("Firestore: Additional tasks remote update but no change detected or already synced.");
                 }
             } else if (doc.exists && !doc.data()?.additionalTasksData) {
                 console.log("Firestore: additionalTasksData field not found, initializing locally.");
@@ -388,6 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!userDocRef) { console.warn("listenToHistoryChanges: User doc ref is null, cannot set listener."); return; }
         console.log("Setting up Firestore listener for historyData:", userId);
         userHistoryUnsubscribe = userDocRef.onSnapshot(doc => {
+            // 변경 사항이 로컬에서 발생한 쓰기 작업으로 인해 보류 중인 경우
             if (doc.metadata.hasPendingWrites && doc.metadata.fromCache) {
                 console.log("Firestore: Local change detected for historyData, skipping UI re-render.");
                 return;
@@ -404,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     announceToScreenReader("기록이 클라우드에서 업데이트되었습니다.");
                     showUserFeedback("기록이 클라우드에서 업데이트되었습니다.", 'info');
                 } else {
-                    console.log("Firestore: History remote update but no change detected or already synced. Not showing feedback.");
+                    console.log("Firestore: History remote update but no change detected or already synced.");
                 }
             } else if (doc.exists && !doc.data()?.historyData) {
                 console.log("Firestore: historyData field not found, initializing locally.");
@@ -502,7 +540,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const userCredential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
             console.log("Auth: User signed up:", userCredential.user.uid);
             await initializeUserSettingsInFirestore(userCredential.user.uid);
-            await syncDataToFirestore(); // 새 사용자 데이터 초기화 저장
+            await saveTasksToFirestore(); // 새 사용자는 데이터도 초기화하여 저장
+            await saveAdditionalTasksToFirestore();
+            await saveHistoryToFirestore();
             announceToScreenReader(`회원가입 성공: ${userCredential.user.email}`);
             showUserFeedback("회원가입 성공!", 'success');
         } catch (error) { showUserFeedback(`회원가입 실패: ${error.message}`, 'error'); console.error("Error signing up:", error); }
@@ -526,7 +566,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.additionalUserInfo && result.additionalUserInfo.isNewUser) {
                 console.log("Auth: New Google user, initializing data.");
                 await initializeUserSettingsInFirestore(result.user.uid);
-                await syncDataToFirestore(); // 새 Google 사용자 데이터 초기화 저장
+                await saveTasksToFirestore(); // 새 Google 사용자는 데이터도 초기화하여 저장
+                await saveAdditionalTasksToFirestore();
+                await saveHistoryToFirestore();
             }
             showUserFeedback("Google 로그인 성공!", 'success');
         } catch (error) { showUserFeedback(`Google 로그인 실패: ${error.message}`, 'error'); console.error("Error signing in with Google:", error); }
@@ -748,19 +790,17 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('oneulSetAdditionalTasks', JSON.stringify(additionalTasks));
         localStorage.setItem('oneulSetLastDate', getTodayDateString());
         localStorage.setItem('oneulSetHistory', JSON.stringify(history));
-
-        // UI 갱신은 필요한 경우에만 명시적으로 호출
         updateStats();
-        if (currentAppMode === 'focus') {
-            const chartCanvasEl = document.getElementById('daily-achievement-chart');
-            const currentDailyAchievementChartCtx = chartCanvasEl ? chartCanvasEl.getContext('2d') : null;
-            if (currentDailyAchievementChartCtx) renderStatsVisuals();
-        }
+        const chartCanvasEl = document.getElementById('daily-achievement-chart');
+        const currentDailyAchievementChartCtx = chartCanvasEl ? chartCanvasEl.getContext('2d') : null;
+        if (currentAppMode === 'focus' && currentDailyAchievementChartCtx) renderStatsVisuals();
 
         // 사용자 로그인 중이고, 오프라인이 아닌 경우에만 Firestore에 저장
         if (currentUser && firestoreDB && navigator.onLine) {
             console.log("saveState: User logged in and online. Attempting Firestore sync.");
-            syncDataToFirestore(); // 통합된 동기화 함수 호출
+            saveTasksToFirestore();
+            saveAdditionalTasksToFirestore();
+            saveHistoryToFirestore();
         } else if (currentUser && !navigator.onLine) {
             console.warn("saveState: Offline: Data not saved to Firestore, will sync when online.");
             showUserFeedback("오프라인: 데이터는 네트워크 연결 시 동기화됩니다.", 'info');
@@ -1368,7 +1408,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const imageURL = canvas.toDataURL('image/png');
                     const downloadLink = document.createElement('a');
                     downloadLink.href = imageURL; downloadLink.download = `오늘셋_할일_${getTodayDateString()}.png`;
-                    document.body.appendChild(downloadLink); document.body.removeChild(downloadLink);
+                    document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
                     announceToScreenReader("할 일 목록 이미지가 다운로드되었습니다.");
                     showUserFeedback("할 일 목록 이미지가 다운로드되었습니다.", 'success');
                 }).catch(err => { console.error('이미지 생성 실패:', err); showUserFeedback('이미지 생성에 실패했습니다.', 'error');
@@ -1476,7 +1516,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 초기화 실행 ---
     async function initializeApp() {
-        console.log("Initializing app (v1.20.0 - Scope Fix)...");
+        console.log("Initializing app (v1.17.1 - Firestore Debugging Enabled)...");
         if (!document.getElementById('current-date') || !document.querySelector('.task-list') || !document.getElementById('auth-status')) {
             document.body.innerHTML = '<div style="text-align:center;padding:20px;">앱 로딩 오류: 필수 DOM 요소 누락. (DOM_MISSING)</div>'; return;
         }
@@ -1527,7 +1567,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!firestoreContentLoaded) {
                             // Firestore에 콘텐츠 데이터가 없으면, 로컬 데이터를 Firestore에 업로드
                             console.log("Post-login: No content in Firestore, uploading local data if any.");
-                            await syncDataToFirestore(); // 새 사용자 데이터 초기화 저장
+                            await saveTasksToFirestore();
+                            await saveAdditionalTasksToFirestore();
+                            await saveHistoryToFirestore();
                             showUserFeedback("로컬 데이터가 클라우드에 업로드되었습니다.", 'success');
                         }
                         // 각 데이터에 대한 실시간 리스너 시작
