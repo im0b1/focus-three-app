@@ -1,3 +1,4 @@
+--- START OF FILE manifest.json ---
 {
   "name": "오늘셋 - 오늘의 할 일",
   "short_name": "오늘셋",
@@ -23,3 +24,4 @@
   ],
   "scope": "/"
 }
+--- END OF FILE manifest.json ---
