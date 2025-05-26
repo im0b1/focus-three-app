@@ -1,6 +1,7 @@
-// script.js - v1.22.0-ui-fixes-toast-limit - FULL CODE
+
+// script.js - v1.23.0-daily-reset-toast-fix - FULL CODE
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded and parsed (v1.22.0)");
+    console.log("DOM fully loaded and parsed (v1.23.0)");
 
     // --- Firebase Configuration ---
     const firebaseConfig = {
@@ -138,12 +139,18 @@ document.addEventListener('DOMContentLoaded', () => {
      * 사용자에게 오류/정보 메시지를 표시합니다.
      * @param {string} message 사용자에게 표시할 메시지
      * @param {'info' | 'success' | 'warning' | 'error'} type 메시지 유형
+     * @param {boolean} isBackgroundSync 백그라운드 동기화 관련 메시지인지 여부 (토스트 숨김용)
      */
-    function showUserFeedback(message, type = 'info') {
+    function showUserFeedback(message, type = 'info', isBackgroundSync = false) {
         console.log(`[Feedback - ${type.toUpperCase()}] ${message}`);
 
         if (liveRegionEl) {
             liveRegionEl.textContent = message;
+        }
+
+        // 백그라운드 동기화 메시지는 토스트로 표시하지 않음
+        if (isBackgroundSync) {
+            return;
         }
 
         const toastContainer = document.getElementById('toast-container') || (() => {
@@ -219,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 await userDocRef.set({ appSettings: initialSettings }, { merge: true });
                 console.log("Firestore: Initial appSettings created for", userId);
-                // showUserFeedback("초기 설정이 클라우드에 저장되었습니다.", 'success'); // 클라우드 메시지 제거
             } else {
                 console.log("Firestore: appSettings already exist for", userId);
             }
@@ -297,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await userDocRef.set({ appSettings: settingsToSave }, { merge: true });
             console.log("Firestore: App settings saved for user", currentUser.uid);
-            // showUserFeedback("클라우드 설정이 저장되었습니다.", 'success'); // 클라우드 메시지 제거
         } catch (error) { showUserFeedback(`클라우드 설정 저장 실패: ${error.message}`, 'error'); console.error("Error saving app settings to Firestore for " + currentUser.uid + ":", error); }
     }
 
@@ -313,19 +318,18 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Firestore: Attempting to sync all data (tasks, additional tasks, history) using batch write.");
         const batch = firestoreDB.batch();
 
-        // tasksData 업데이트
+        // tasksData 업데이트 (lastUpdated 포함)
         batch.set(userDocRef, { tasksData: { items: tasks, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
 
-        // additionalTasksData 업데이트
+        // additionalTasksData 업데이트 (lastUpdated 포함)
         batch.set(userDocRef, { additionalTasksData: { items: additionalTasks, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
 
-        // historyData 업데이트
+        // historyData 업데이트 (lastUpdated 포함)
         batch.set(userDocRef, { historyData: { items: history, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
 
         try {
             await batch.commit();
             console.log("Firestore: All data (tasks, additional tasks, history) committed in a single batch.");
-            // showUserFeedback("모든 할 일 데이터가 클라우드에 동기화되었습니다.", 'success'); // 클라우드 메시지 제거
         } catch (error) {
             showUserFeedback(`클라우드 데이터 동기화 실패: ${error.message}`, 'error');
             console.error("Error syncing all data to Firestore:", error);
@@ -356,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log("Firestore: AppSettings changed by remote, updating local state and UI.");
                     applySettingsToLocalAndUI(remoteSettings, 'firestore');
                     announceToScreenReader("클라우드 설정이 업데이트되었습니다.");
-                    showUserFeedback("클라우드 설정이 업데이트되었습니다.", 'info');
+                    showUserFeedback("클라우드 설정이 업데이트되었습니다.", 'info', true); // 배경 동기화 메시지
                 } else {
                     console.log("Firestore: AppSettings remote update but no change detected or already synced. Not showing feedback.");
                 }
@@ -386,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (tasks.length > 5) tasks = tasks.slice(0,5);
                     renderTasks();
                     announceToScreenReader("핵심 할 일 목록이 클라우드에서 업데이트되었습니다.");
-                    showUserFeedback("핵심 할 일 목록이 클라우드에서 업데이트되었습니다.", 'info');
+                    showUserFeedback("핵심 할 일 목록이 클라우드에서 업데이트되었습니다.", 'info', true); // 배경 동기화 메시지
                 } else {
                     console.log("Firestore: Tasks remote update but no change detected or already synced. Not showing feedback.");
                 }
@@ -418,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     additionalTasks = remoteAdditionalTasks;
                     renderAdditionalTasks();
                     announceToScreenReader("추가 할 일 목록이 클라우드에서 업데이트되었습니다.");
-                    showUserFeedback("추가 할 일 목록이 클라우드에서 업데이트되었습니다.", 'info');
+                    showUserFeedback("추가 할 일 목록이 클라우드에서 업데이트되었습니다.", 'info', true); // 배경 동기화 메시지
                 } else {
                     console.log("Firestore: Additional tasks remote update but no change detected or already synced. Not showing feedback.");
                 }
@@ -452,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateStats();
                     renderStatsVisuals();
                     announceToScreenReader("기록이 클라우드에서 업데이트되었습니다.");
-                    showUserFeedback("기록이 클라우드에서 업데이트되었습니다.", 'info');
+                    showUserFeedback("기록이 클라우드에서 업데이트되었습니다.", 'info', true); // 배경 동기화 메시지
                 } else {
                     console.log("Firestore: History remote update but no change detected or already synced. Not showing feedback.");
                 }
@@ -468,6 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, error => { showUserFeedback(`기록 동기화 오류: ${error.message}`, 'error'); console.error("Error in history listener for " + userId + ":", error); });
     }
 
+    // `loadContentDataFromFirestore`에 날짜 변경 시 초기화 로직 추가
     async function loadContentDataFromFirestore(userId) {
         if (!firestoreDB) { console.warn("loadContentDataFromFirestore: Firestore DB is not initialized. Cannot load content."); return Promise.resolve(false); }
         if (!userId) { console.warn("loadContentDataFromFirestore: No user ID provided. Cannot load content."); return Promise.resolve(false); }
@@ -480,59 +485,112 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const docSnap = await userDocRef.get();
             let firestoreDataFound = false;
+
+            const todayDateStr = getTodayDateString();
+            let tasksFromFirestore = [];
+            let additionalTasksFromFirestore = [];
+            let historyFromFirestore = [];
+            let lastUpdatedDateStr = null;
+
             if (docSnap.exists && docSnap.data()) {
                 const data = docSnap.data();
-                console.log("Firestore: Document data received for content:", data);
 
-                // 데이터 무결성 검사 및 로드
                 if (data.tasksData && Array.isArray(data.tasksData.items)) {
-                    tasks = data.tasksData.items;
-                    console.log(`Firestore: Tasks loaded (${tasks.length} items).`);
+                    tasksFromFirestore = data.tasksData.items;
                     firestoreDataFound = true;
-                } else {
-                    console.log("Firestore: No tasksData found. Initializing tasks locally.");
-                    initializeTasks();
+                    if (data.tasksData.lastUpdated) {
+                        const ts = data.tasksData.lastUpdated.toDate();
+                        lastUpdatedDateStr = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, '0')}-${String(ts.getDate()).padStart(2, '0')}`;
+                    }
                 }
 
                 if (data.additionalTasksData && Array.isArray(data.additionalTasksData.items)) {
-                    additionalTasks = data.additionalTasksData.items;
-                    console.log(`Firestore: AdditionalTasks loaded (${additionalTasks.length} items).`);
+                    additionalTasksFromFirestore = data.additionalTasksData.items;
                     firestoreDataFound = true;
-                } else {
-                    console.log("Firestore: No additionalTasksData found. Initializing additionalTasks locally.");
-                    additionalTasks = [];
                 }
 
                 if (data.historyData && Array.isArray(data.historyData.items)) {
-                    history = data.historyData.items;
-                    console.log(`Firestore: History loaded (${history.length} items).`);
+                    historyFromFirestore = data.historyData.items;
                     firestoreDataFound = true;
-                } else {
-                    console.log("Firestore: No historyData found. Initializing history locally.");
-                    history = [];
                 }
-
-                // 데이터 무결성: tasks 배열의 길이를 5개로 유지
-                while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
-                if (tasks.length > 5) tasks = tasks.slice(0,5);
-
-                renderAllContentUI(); // UI 렌더링
-
-                if (firestoreDataFound) announceToScreenReader("클라우드에서 데이터를 불러왔습니다.");
-                return firestoreDataFound;
-            } else {
-                console.log("Firestore: No user document found for content for user " + userId + ". Initializing local content.");
-                initializeTasks(); additionalTasks = []; history = [];
-                renderAllContentUI();
-                return false;
             }
+
+            let shouldResetTasks = false;
+            // 로컬에 저장된 lastDate를 기준으로 초기화 여부를 판단
+            // 클라우드 데이터를 불러왔지만, 로컬 저장소의 lastDate가 오늘과 다르면 (즉, 앱이 이전 날짜에 실행되었었다면) 초기화
+            const localLastDate = localStorage.getItem('oneulSetLastDate');
+
+            if (localLastDate !== todayDateStr) {
+                console.log(`Daily reset triggered by local storage last date. Local: ${localLastDate}, Today: ${todayDateStr}.`);
+                shouldResetTasks = true;
+                if (tasksFromFirestore.length > 0 && tasksFromFirestore.some(t => t.text.trim() !== '')) {
+                     try {
+                        const historicalFocusModeTaskCount = parseInt(localStorage.getItem('oneulSetFocusTaskCountSettingBeforeReset') || '3', 10);
+
+                        const relevantTasksForHistory = tasksFromFirestore.slice(0, historicalFocusModeTaskCount);
+                        const cleanedRelevantTasks = relevantTasksForHistory.map(t => ({
+                            id: t?.id || Date.now() + Math.random(),
+                            text: typeof t?.text === 'string' ? t.text : '',
+                            completed: typeof t?.completed === 'boolean' ? t.completed : false,
+                            memo: typeof t?.memo === 'string' ? t.memo : ''
+                        }));
+
+                        const allFilled = cleanedRelevantTasks.every(t => t.text.trim() !== "");
+                        const allCompleted = cleanedRelevantTasks.every(t => t.completed);
+                        const achieved = allFilled && cleanedRelevantTasks.length === historicalFocusModeTaskCount && allCompleted && historicalFocusModeTaskCount > 0;
+
+                        if (localLastDate && !historyFromFirestore.some(entry => entry.date === localLastDate)) {
+                            historyFromFirestore.unshift({ date: localLastDate, tasks: cleanedRelevantTasks, achieved: achieved });
+                            if (historyFromFirestore.length > 60) historyFromFirestore.splice(60);
+                            console.log("Added previous day's Firestore tasks to history based on localLastDate.");
+                        }
+                    } catch (e) {
+                        console.error("Error processing previous day's Firestore tasks for history based on localLastDate", e);
+                        showUserFeedback("과거 기록 처리 중 오류가 발생했습니다.", 'warning');
+                    }
+                }
+            } else {
+                console.log("Firestore: Tasks data is already up-to-date for today (based on localLastDate).");
+            }
+
+            // Apply loaded data or reset data
+            if (shouldResetTasks) {
+                initializeTasks(); // Clears tasks
+                additionalTasks = []; // Clears additional tasks
+                history = historyFromFirestore; // Use processed history
+                console.log("Tasks and additional tasks reset for new day (from Firestore load logic).");
+                localStorage.setItem('oneulSetFocusTaskCountSettingBeforeReset', focusModeTaskCountSetting.toString()); // Update for next day
+                localStorage.setItem('oneulSetLastDate', todayDateStr); // Mark today as processed
+                await syncDataToFirestore(); // Save the reset state to Firestore
+            } else {
+                tasks = tasksFromFirestore;
+                additionalTasks = additionalTasksFromFirestore;
+                history = historyFromFirestore;
+            }
+
+            // 데이터 무결성: tasks 배열의 길이를 5개로 유지
+            while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
+            if (tasks.length > 5) tasks = tasks.slice(0,5);
+
+            renderAllContentUI(); // UI 렌더링
+
+            if (firestoreDataFound && !shouldResetTasks) {
+                announceToScreenReader("클라우드에서 데이터를 불러왔습니다.");
+            } else if (shouldResetTasks) {
+                 announceToScreenReader("새로운 날이 시작되었습니다. 할 일 목록이 초기화되었습니다.");
+                 showUserFeedback("새로운 날이 시작되었습니다. 할 일 목록이 초기화되었습니다.", 'info');
+            }
+
+            return firestoreDataFound;
+
         } catch (error) {
             console.error("Error loading content data from Firestore for " + userId + ":", error);
-            showUserFeedback("클라우드 데이터 로드 중 오류 발생.", 'error');
-            loadContentDataFromLocalStorage(); // 오류 시 로컬 데이터로 복구
+            showUserFeedback("클라우드 데이터 로드 중 오류 발생. 오프라인 모드로 전환됩니다.", 'error');
+            loadContentDataFromLocalStorage(); // 오류 시 로컬 데이터로 복구 (이 함수는 이제 로컬 초기화도 담당)
             return Promise.reject(error);
         }
     }
+
 
     function renderAllContentUI() {
         renderTasks();
@@ -773,7 +831,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveState(source = 'local') {
         localStorage.setItem('oneulSetTasks', JSON.stringify(tasks));
         localStorage.setItem('oneulSetAdditionalTasks', JSON.stringify(additionalTasks));
-        localStorage.setItem('oneulSetLastDate', getTodayDateString());
+        localStorage.setItem('oneulSetLastDate', getTodayDateString()); // 항상 현재 날짜로 업데이트
         localStorage.setItem('oneulSetHistory', JSON.stringify(history));
 
         // UI 갱신은 필요한 경우에만 명시적으로 호출
@@ -794,6 +852,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("saveState: Not logged in. Data only saved to local storage.");
         }
     }
+
+    // 로컬 스토리지에서 데이터 로드 및 일별 초기화 로직 (로그아웃 상태용)
     function loadContentDataFromLocalStorage() {
         console.log("Loading content data (tasks, history) from Local Storage.");
         const storedTasks = localStorage.getItem('oneulSetTasks');
@@ -816,13 +876,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (storedTasks && storedLastDate) { // 어제 날짜의 기록을 히스토리에 추가
                 try {
                     const yesterdayTasksData = JSON.parse(storedTasks);
-                    // 기존 focusModeTaskCountSetting 값을 사용해야 함 (리셋되기 전)
                     const yesterdayFocusModeTaskCount = parseInt(localStorage.getItem('oneulSetFocusTaskCountSettingBeforeReset') || '3', 10);
                     if (Array.isArray(yesterdayTasksData)) {
                         const relevantYesterdayTasks = yesterdayTasksData.slice(0, yesterdayFocusModeTaskCount);
-                        // 데이터 무결성: 할 일 객체에 필수 속성 있는지 확인
                         const cleanedRelevantTasks = relevantYesterdayTasks.map(t => ({
-                            id: t?.id || Date.now() + Math.random(), // id가 없으면 새로 생성
+                            id: t?.id || Date.now() + Math.random(),
                             text: typeof t?.text === 'string' ? t.text : '',
                             completed: typeof t?.completed === 'boolean' ? t.completed : false,
                             memo: typeof t?.memo === 'string' ? t.memo : ''
@@ -834,7 +892,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!history.some(entry => entry.date === storedLastDate)) { // 이미 기록되지 않은 경우에만 추가
                             history.unshift({ date: storedLastDate, tasks: cleanedRelevantTasks, achieved: achieved });
                             if (history.length > 60) history.splice(60); // 최근 60일만 유지
-                            console.log("Added yesterday's tasks to history.");
+                            console.log("Added yesterday's tasks to history from local storage.");
                         }
                     }
                 } catch (e) { console.error("Error processing yesterday's tasks for history", e); showUserFeedback("어제 기록 처리 중 오류가 발생했습니다.", 'warning');}
@@ -843,10 +901,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (shouldResetTasks) {
-            console.log("Tasks should be reset or initialized.");
+            console.log("Tasks should be reset or initialized (local).");
             initializeTasks();
-            if (currentAppMode === 'focus') additionalTasks = []; // 간편 모드에서는 추가 할 일 없음
-            // saveState('local'); // 로컬 초기화 후 자동 Firestore 저장 방지 (로그인 시 병합 로직에서 처리)
+            if (currentAppMode === 'focus') additionalTasks = [];
+            else additionalTasks = [];
+            localStorage.setItem('oneulSetLastDate', todayDateStr); // 오늘 날짜로 처리되었음을 저장
+            announceToScreenReader("새로운 날이 시작되었습니다. 할 일 목록이 초기화되었습니다.");
+            showUserFeedback("새로운 날이 시작되었습니다. 할 일 목록이 초기화되었습니다.", 'info');
         }
         // 데이터 무결성: tasks 배열의 길이를 5개로 유지 (혹시 모를 경우를 대비)
         while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
@@ -1394,6 +1455,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const exportFileDefaultName = `오늘셋_백업_${getTodayDateString()}.json`;
                 let linkElement = document.createElement('a');
                 linkElement.setAttribute('href', dataUri); linkElement.setAttribute('download', exportFileDefaultName);
+                document.body.appendChild(linkElement); // Firefox needs element to be in DOM for click()
                 linkElement.click(); linkElement.remove();
                 const o = exportDataBtnEl.innerHTML; exportDataBtnEl.innerHTML = '<i class="fas fa-check"></i> 내보내기 완료!';
                 announceToScreenReader("로컬 데이터를 성공적으로 내보냈습니다.");
@@ -1423,7 +1485,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
                                 if (tasks.length > 5) tasks = tasks.slice(0,5);
 
-                                loadContentDataFromLocalStorage(); // 가져온 데이터로 UI 렌더링
+                                loadContentDataFromLocalStorage(); // 가져온 데이터로 UI 렌더링 (로컬 초기화 로직이 포함됨)
                                 saveState('local'); // 가져온 데이터 로컬 저장 및 로그인 상태면 클라우드 저장
                                 if (confirm("로컬 데이터 가져오기 성공. 새로고침하시겠습니까?")) window.location.reload();
                                 else announceToScreenReader("로컬 데이터 가져오기 성공.");
@@ -1469,7 +1531,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 초기화 실행 ---
     async function initializeApp() {
-        console.log("Initializing app (v1.22.0 - UI Fixes & Toast Limit)...");
+        console.log("Initializing app (v1.23.0 - Daily Reset, Toast & UI Fixes)...");
         if (!currentDateEl || !taskListDivEl || !authStatusContainerEl) {
             document.body.innerHTML = '<div style="text-align:center;padding:20px;">앱 로딩 오류: 필수 DOM 요소 누락. (DOM_MISSING)</div>'; return;
         }
@@ -1484,7 +1546,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appMode: currentAppMode, theme: currentTheme,
             focusTaskCount: focusModeTaskCountSetting, shareOptions: shareOptions
         }, 'local_init');
-        loadContentDataFromLocalStorage(); // 초기 로컬 데이터 로드
+        loadContentDataFromLocalStorage(); // 초기 로컬 데이터 로드 및 로컬 일별 초기화 처리
 
         setupAuthEventListeners();
         setupFooterToggleListeners();
@@ -1516,13 +1578,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         console.log("Post-login: Attempting to load content data from Firestore.");
                         // 2. 콘텐츠 데이터 로드 및 초기 동기화 (각 데이터 리스너는 여기서 시작)
+                        // 이 함수 내에서 일별 초기화 로직이 포함되어 클라우드 데이터에 적용
                         const firestoreContentLoaded = await loadContentDataFromFirestore(user.uid);
-                        if (!firestoreContentLoaded) {
-                            // Firestore에 콘텐츠 데이터가 없으면, 로컬 데이터를 Firestore에 업로드
-                            console.log("Post-login: No content in Firestore, uploading local data if any.");
-                            await syncDataToFirestore(); // 새 사용자 데이터 초기화 저장
-                            // showUserFeedback("로컬 데이터가 클라우드에 업로드되었습니다.", 'success'); // 클라우드 메시지 제거
-                        }
+
                         // 각 데이터에 대한 실시간 리스너 시작
                         listenToTasksChanges(user.uid);
                         listenToAdditionalTasksChanges(user.uid);
@@ -1534,7 +1592,7 @@ document.addEventListener('DOMContentLoaded', () => {
                          console.error("Error during post-login Firestore operations:", error);
                          if(cloudSyncStatusDivEl) cloudSyncStatusDivEl.textContent = `클라우드 데이터 처리 오류.`;
                          showUserFeedback("클라우드 데이터 처리 중 오류 발생. 오프라인 모드로 전환됩니다.", 'error');
-                         loadContentDataFromLocalStorage(); // 오류 시 로컬 데이터로 UI 복원
+                         loadContentDataFromLocalStorage(); // 오류 시 로컬 데이터로 UI 복원 및 로컬 일별 초기화
                     } finally {
                         isInitialFirestoreLoadComplete = true; // Firestore 초기 로드 완료
                     }
@@ -1543,7 +1601,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 모든 리스너 해제 (상단 signOutUser 함수에서 이미 처리)
                     currentUser = null;
                     isInitialFirestoreLoadComplete = false; // 로그아웃 시 초기 로드 상태 해제
-                    // 로컬 저장소에서 설정 및 콘텐츠를 다시 로드하여 UI 업데이트
+                    // 로컬 저장소에서 설정 및 콘텐츠를 다시 로드하여 UI 업데이트 및 로컬 일별 초기화
                     const localSettings = {
                         appMode: localStorage.getItem('oneulSetMode') || 'simple',
                         theme: localStorage.getItem('oneulSetTheme') || 'dark',
@@ -1551,7 +1609,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         shareOptions: JSON.parse(localStorage.getItem('oneulSetShareOptions') || '{"includeAdditional":false,"includeMemos":false}')
                     };
                     applySettingsToLocalAndUI(localSettings, 'local_logout');
-                    loadContentDataFromLocalStorage();
+                    loadContentDataFromLocalStorage(); // 로컬 데이터 로드 및 로컬 일별 초기화 처리
                     if(cloudSyncStatusDivEl) cloudSyncStatusDivEl.textContent = '로그인하여 데이터를 클라우드에 동기화하세요.';
                     announceToScreenReader("로그아웃 되었습니다.");
                     showUserFeedback("로그아웃 되었습니다.", 'info');
@@ -1560,7 +1618,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             console.warn("initializeApp: Firebase Auth is not available (firebaseAuth object is null). Running local-only.");
             updateAuthUI(null); // Firebase Auth가 없으므로 로그인 상태 아님으로 설정
-            loadContentDataFromLocalStorage(); // 로컬 데이터 로드
+            loadContentDataFromLocalStorage(); // 로컬 데이터 로드 및 로컬 일별 초기화 처리
             if(cloudSyncStatusDivEl) cloudSyncStatusDivEl.textContent = '클라우드 서비스 사용 불가.';
             showUserFeedback("Firebase Auth 서비스 사용 불가. 로컬 모드로 실행됩니다.", 'warning');
         }
