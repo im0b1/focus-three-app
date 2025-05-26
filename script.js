@@ -1,7 +1,6 @@
-
-// script.js - v1.23.0-daily-reset-toast-fix - FULL CODE
+// script.js - v1.24.0-no-memos - FULL CODE
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded and parsed (v1.23.0)");
+    console.log("DOM fully loaded and parsed (v1.24.0)");
 
     // --- Firebase Configuration ---
     const firebaseConfig = {
@@ -24,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentAppMode = 'simple';
     let currentTheme = 'dark';
     let focusModeTaskCountSetting = 3;
-    let shareOptions = { includeAdditional: false, includeMemos: false };
+    let shareOptions = { includeAdditional: false }; // includeMemos 제거
     let currentUser = null;
     let userSettingsUnsubscribe = null;
     let userTasksUnsubscribe = null;
@@ -63,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mostAchievedDayEl = document.getElementById('most-achieved-day');
     const chartCanvasEl = document.getElementById('daily-achievement-chart');
     const shareIncludeAdditionalCheckboxEl = document.getElementById('share-include-additional');
-    const shareIncludeMemosCheckboxEl = document.getElementById('share-include-memos');
+    // const shareIncludeMemosCheckboxEl = document.getElementById('share-include-memos'); // 메모 제거
     const shareAsImageBtnEl = document.getElementById('share-as-image-btn');
     const copyLinkBtnEl = document.getElementById('copy-link-btn');
     const shareTwitterBtnEl = document.getElementById('share-twitter-btn');
@@ -74,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareAsImageBtnContainerEl = document.getElementById('share-as-image-btn-container');
     const currentSettingsContentDiv = document.querySelector('#settings-section .settings-content');
     const shareOptionsDivEl = document.querySelector('#share-section .share-options');
-    const shareIncludeMemosLabelEl = document.getElementById('share-include-memos-label');
+    // const shareIncludeMemosLabelEl = document.getElementById('share-include-memos-label'); // 메모 제거
     const settingsSectionEl = document.getElementById('settings-section');
     const simpleModeSettingsInfoEl = settingsSectionEl ? settingsSectionEl.querySelector('.simple-mode-settings-info') : null;
 
@@ -221,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!docSnap.exists || !docSnap.data()?.appSettings) {
                 const initialSettings = {
                     appMode: 'simple', theme: 'dark', focusTaskCount: 3,
-                    shareOptions: { includeAdditional: false, includeMemos: false },
+                    shareOptions: { includeAdditional: false }, // includeMemos 제거
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 await userDocRef.set({ appSettings: initialSettings }, { merge: true });
@@ -283,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if(taskCountSelectorEl) taskCountSelectorEl.value = focusModeTaskCountSetting;
         if(shareIncludeAdditionalCheckboxEl) shareIncludeAdditionalCheckboxEl.checked = shareOptions.includeAdditional;
-        if(shareIncludeMemosCheckboxEl) shareIncludeMemosCheckboxEl.checked = shareOptions.includeMemos;
+        // shareIncludeMemosCheckboxEl 제거
     }
 
     async function saveAppSettingsToFirestore() {
@@ -336,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Firestore 리스너 구현 (메모 버그 수정 포함) ---
+    // --- Firestore 리스너 구현 ---
     function listenToAppSettingsChanges(userId) {
         if (userSettingsUnsubscribe) userSettingsUnsubscribe();
         const userDocRef = getUserDocRef(userId);
@@ -354,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let changed = remoteSettings.appMode !== currentAppMode ||
                               remoteSettings.theme !== localThemeForCompare ||
                               remoteSettings.focusTaskCount !== focusModeTaskCountSetting ||
-                              JSON.stringify(remoteSettings.shareOptions) !== JSON.stringify(shareOptions);
+                              JSON.stringify(remoteSettings.shareOptions) !== JSON.stringify(shareOptions); // includeMemos는 이미 shareOptions에서 제거됨
 
                 if (changed) {
                     console.log("Firestore: AppSettings changed by remote, updating local state and UI.");
@@ -382,11 +381,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (doc.exists && doc.data()?.tasksData?.items) {
-                const remoteTasks = doc.data().tasksData.items;
+                const remoteTasks = doc.data().tasksData.items.map(t => ({ // 메모 제거
+                    id: t.id, text: t.text, completed: t.completed
+                }));
                 if (JSON.stringify(tasks) !== JSON.stringify(remoteTasks)) {
                     console.log("Firestore: Tasks changed by remote, updating local state and UI.");
                     tasks = remoteTasks;
-                    while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
+                    while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false });} // 메모 제거
                     if (tasks.length > 5) tasks = tasks.slice(0,5);
                     renderTasks();
                     announceToScreenReader("핵심 할 일 목록이 클라우드에서 업데이트되었습니다.");
@@ -448,7 +449,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (doc.exists && doc.data()?.historyData?.items) {
-                const remoteHistory = doc.data().historyData.items;
+                const remoteHistory = doc.data().historyData.items.map(entry => ({ // history entry의 tasks에서도 memo 제거
+                    ...entry,
+                    tasks: entry.tasks.map(t => ({ id: t.id, text: t.text, completed: t.completed }))
+                }));
                  if (JSON.stringify(history) !== JSON.stringify(remoteHistory)) {
                     console.log("Firestore: History changed by remote, updating local state and UI.");
                     history = remoteHistory;
@@ -490,18 +494,15 @@ document.addEventListener('DOMContentLoaded', () => {
             let tasksFromFirestore = [];
             let additionalTasksFromFirestore = [];
             let historyFromFirestore = [];
-            let lastUpdatedDateStr = null;
 
             if (docSnap.exists && docSnap.data()) {
                 const data = docSnap.data();
 
                 if (data.tasksData && Array.isArray(data.tasksData.items)) {
-                    tasksFromFirestore = data.tasksData.items;
+                    tasksFromFirestore = data.tasksData.items.map(t => ({ // 메모 제거
+                        id: t.id, text: t.text, completed: t.completed
+                    }));
                     firestoreDataFound = true;
-                    if (data.tasksData.lastUpdated) {
-                        const ts = data.tasksData.lastUpdated.toDate();
-                        lastUpdatedDateStr = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, '0')}-${String(ts.getDate()).padStart(2, '0')}`;
-                    }
                 }
 
                 if (data.additionalTasksData && Array.isArray(data.additionalTasksData.items)) {
@@ -510,14 +511,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (data.historyData && Array.isArray(data.historyData.items)) {
-                    historyFromFirestore = data.historyData.items;
+                    historyFromFirestore = data.historyData.items.map(entry => ({ // history entry의 tasks에서도 memo 제거
+                        ...entry,
+                        tasks: entry.tasks.map(t => ({ id: t.id, text: t.text, completed: t.completed }))
+                    }));
                     firestoreDataFound = true;
                 }
             }
 
             let shouldResetTasks = false;
-            // 로컬에 저장된 lastDate를 기준으로 초기화 여부를 판단
-            // 클라우드 데이터를 불러왔지만, 로컬 저장소의 lastDate가 오늘과 다르면 (즉, 앱이 이전 날짜에 실행되었었다면) 초기화
             const localLastDate = localStorage.getItem('oneulSetLastDate');
 
             if (localLastDate !== todayDateStr) {
@@ -532,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             id: t?.id || Date.now() + Math.random(),
                             text: typeof t?.text === 'string' ? t.text : '',
                             completed: typeof t?.completed === 'boolean' ? t.completed : false,
-                            memo: typeof t?.memo === 'string' ? t.memo : ''
+                            // memo: typeof t?.memo === 'string' ? t.memo : '' // 메모 제거
                         }));
 
                         const allFilled = cleanedRelevantTasks.every(t => t.text.trim() !== "");
@@ -569,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 데이터 무결성: tasks 배열의 길이를 5개로 유지
-            while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
+            while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false });} // 메모 제거
             if (tasks.length > 5) tasks = tasks.slice(0,5);
 
             renderAllContentUI(); // UI 렌더링
@@ -740,7 +742,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appModeToggleEl.setAttribute('aria-label', `${modeToSwitchToText} 모드로 전환`);
         }
         if (shareOptionsDivEl) shareOptionsDivEl.classList.toggle('hidden', mode === 'simple');
-        if (shareIncludeMemosLabelEl) shareIncludeMemosLabelEl.classList.toggle('hidden', mode === 'simple');
+        // if (shareIncludeMemosLabelEl) shareIncludeMemosLabelEl.classList.toggle('hidden', mode === 'simple'); // 메모 제거
 
         if (mode === 'simple') {
             MAX_TASKS_CURRENT_MODE = 3;
@@ -862,14 +864,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const storedHistory = localStorage.getItem('oneulSetHistory');
         const todayDateStr = getTodayDateString();
 
-        if (storedHistory) { try { history = JSON.parse(storedHistory); if (!Array.isArray(history)) history = []; } catch (e) { history = []; showUserFeedback("로컬 기록 데이터 손상. 초기화합니다.", 'warning'); } }
+        if (storedHistory) {
+            try {
+                history = JSON.parse(storedHistory).map(entry => ({ // history entry의 tasks에서도 memo 제거
+                    ...entry,
+                    tasks: entry.tasks.map(t => ({ id: t.id, text: t.text, completed: t.completed }))
+                }));
+                if (!Array.isArray(history)) history = [];
+            } catch (e) { history = []; showUserFeedback("로컬 기록 데이터 손상. 초기화합니다.", 'warning'); }
+        }
         if (currentAppMode === 'focus' && storedAdditionalTasks) {
             try { additionalTasks = JSON.parse(storedAdditionalTasks); if(!Array.isArray(additionalTasks)) additionalTasks = []; } catch (e) { additionalTasks = []; showUserFeedback("로컬 추가 할 일 데이터 손상. 초기화합니다.", 'warning'); }
         } else { additionalTasks = []; }
 
         let shouldResetTasks = false;
         if (storedLastDate === todayDateStr && storedTasks) {
-            try { tasks = JSON.parse(storedTasks); if (!Array.isArray(tasks)) shouldResetTasks = true; }
+            try {
+                tasks = JSON.parse(storedTasks).map(t => ({ // 로컬 스토리지에서 불러올 때 메모 제거
+                    id: t.id, text: t.text, completed: t.completed
+                }));
+                if (!Array.isArray(tasks)) shouldResetTasks = true;
+            }
             catch (e) { shouldResetTasks = true; showUserFeedback("로컬 핵심 할 일 데이터 손상. 초기화합니다.", 'warning'); }
         } else {
             shouldResetTasks = true;
@@ -883,7 +898,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             id: t?.id || Date.now() + Math.random(),
                             text: typeof t?.text === 'string' ? t.text : '',
                             completed: typeof t?.completed === 'boolean' ? t.completed : false,
-                            memo: typeof t?.memo === 'string' ? t.memo : ''
                         }));
 
                         const allFilled = cleanedRelevantTasks.every(t => t.text.trim() !== "");
@@ -910,7 +924,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showUserFeedback("새로운 날이 시작되었습니다. 할 일 목록이 초기화되었습니다.", 'info');
         }
         // 데이터 무결성: tasks 배열의 길이를 5개로 유지 (혹시 모를 경우를 대비)
-        while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
+        while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false });} // 메모 제거
         if (tasks.length > 5) tasks = tasks.slice(0,5);
 
         renderAllContentUI(); // 설정 로드 후 모든 콘텐츠 UI 렌더링
@@ -918,7 +932,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function initializeTasks() {
         tasks = [];
         for (let i = 0; i < 5; i++) {
-            tasks.push({ id: Date.now() + i + Math.random(), text: '', completed: false, memo: '' });
+            tasks.push({ id: Date.now() + i + Math.random(), text: '', completed: false }); // 메모 제거
         }
         console.log("Tasks array initialized to 5 empty tasks.");
     }
@@ -946,35 +960,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    if (shareIncludeMemosCheckboxEl) {
-        shareIncludeMemosCheckboxEl.addEventListener('change', (e) => {
-             if (shareOptions.includeMemos !== e.target.checked) {
-                shareOptions.includeMemos = e.target.checked;
-                localStorage.setItem('oneulSetShareOptions', JSON.stringify(shareOptions));
-                if (currentUser) saveAppSettingsToFirestore();
-            }
-        });
-    }
+    // shareIncludeMemosCheckboxEl 이벤트 리스너 제거
+
 
     function renderTasks() {
         if(!taskListDivEl) { console.warn("renderTasks: task-list div not found."); return; }
 
-        // 기존 메모 열림 상태를 저장 (버그 수정의 핵심)
-        const openMemos = new Set();
-        taskListDivEl.querySelectorAll('.memo-container:not(.hidden)').forEach(memoEl => {
-            const taskId = memoEl.closest('.task-item')?.querySelector('input[type="checkbox"]')?.id.replace('task-checkbox-', '');
-            if (taskId) openMemos.add(taskId);
-        });
+        // 기존 메모 열림 상태를 저장 (더 이상 필요 없음)
+        // const openMemos = new Set();
+        // taskListDivEl.querySelectorAll('.memo-container:not(.hidden)').forEach(memoEl => {
+        //     const taskId = memoEl.closest('.task-item')?.querySelector('input[type="checkbox"]')?.id.replace('task-checkbox-', '');
+        //     if (taskId) openMemos.add(taskId);
+        // });
 
         taskListDivEl.innerHTML = ''; // 기존 내용을 지우고 다시 그립니다. (전체 재렌더링 유지)
 
         const tasksToRender = tasks.slice(0, MAX_TASKS_CURRENT_MODE);
         tasksToRender.forEach((task, index) => {
             // 데이터 무결성 검사: task 객체에 필수 속성 있는지 확인
-            if (!task || typeof task.id === 'undefined' || typeof task.text === 'undefined' || typeof task.completed === 'undefined' || typeof task.memo === 'undefined') {
+            if (!task || typeof task.id === 'undefined' || typeof task.text === 'undefined' || typeof task.completed === 'undefined') { // memo 속성 제거
                 console.warn(`Malformed task data at index ${index}:`, task);
                 // 손상된 데이터를 건너뛰거나 기본값으로 대체할 수 있습니다. 여기서는 기본값으로 대체합니다.
-                task = { id: Date.now() + index + Math.random(), text: '', completed: false, memo: '' };
+                task = { id: Date.now() + index + Math.random(), text: '', completed: false }; // memo 속성 제거
                 tasks[index] = task; // 손상된 데이터를 수정된 task로 대체
             }
 
@@ -1009,49 +1016,50 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             textareaField.addEventListener('focus', (e) => { autoGrowTextarea(e.target); });
             taskContentDiv.appendChild(textareaField);
-            if (currentAppMode === 'focus') {
-                const memoIcon = document.createElement('button'); memoIcon.classList.add('memo-icon');
-                memoIcon.innerHTML = '<i class="fas fa-sticky-note"></i>';
-                memoIcon.setAttribute('aria-label', `할 일 ${index + 1} 메모 보기/숨기기`);
-                memoIcon.setAttribute('aria-expanded', 'false'); taskContentDiv.appendChild(memoIcon);
-                const memoContainer = document.createElement('div'); memoContainer.classList.add('memo-container', 'hidden');
-                const memoTextarea = document.createElement('textarea'); memoTextarea.rows = "1";
-                memoTextarea.placeholder = "메모 추가..."; memoTextarea.value = currentTask.memo || "";
-                memoTextarea.setAttribute('aria-label', `할 일 ${index + 1} 메모 내용`);
-                memoTextarea.addEventListener('input', (e) => { currentTask.memo = e.target.value; autoGrowTextarea(e.target);});
-                memoTextarea.addEventListener('blur', () => {
-                    saveState('local'); // 상태 변경 시 저장 (로컬 & 클라우드)
-                });
-                memoContainer.appendChild(memoTextarea); taskItem.appendChild(memoContainer);
-                memoIcon.addEventListener('click', () => {
-                    const isHidden = memoContainer.classList.toggle('hidden');
-                    memoIcon.setAttribute('aria-expanded', !isHidden);
-                    if(!isHidden) memoTextarea.focus(); else textareaField.focus();
-                    autoGrowTextarea(textareaField); if(!isHidden) autoGrowTextarea(memoTextarea);
-                });
-                if (currentTask.memo && currentTask.memo.trim() !== "") {
-                    memoIcon.classList.add('has-memo');
-                }
+            // 메모 관련 코드 완전히 제거
+            // if (currentAppMode === 'focus') {
+            //     const memoIcon = document.createElement('button'); memoIcon.classList.add('memo-icon');
+            //     memoIcon.innerHTML = '<i class="fas fa-sticky-note"></i>';
+            //     memoIcon.setAttribute('aria-label', `할 일 ${index + 1} 메모 보기/숨기기`);
+            //     memoIcon.setAttribute('aria-expanded', 'false'); taskContentDiv.appendChild(memoIcon);
+            //     const memoContainer = document.createElement('div'); memoContainer.classList.add('memo-container', 'hidden');
+            //     const memoTextarea = document.createElement('textarea'); memoTextarea.rows = "1";
+            //     memoTextarea.placeholder = "메모 추가..."; memoTextarea.value = currentTask.memo || "";
+            //     memoTextarea.setAttribute('aria-label', `할 일 ${index + 1} 메모 내용`);
+            //     memoTextarea.addEventListener('input', (e) => { currentTask.memo = e.target.value; autoGrowTextarea(e.target);});
+            //     memoTextarea.addEventListener('blur', () => {
+            //         saveState('local'); // 상태 변경 시 저장 (로컬 & 클라우드)
+            //     });
+            //     memoContainer.appendChild(memoTextarea); taskItem.appendChild(memoContainer);
+            //     memoIcon.addEventListener('click', () => {
+            //         const isHidden = memoContainer.classList.toggle('hidden');
+            //         memoIcon.setAttribute('aria-expanded', !isHidden);
+            //         if(!isHidden) memoTextarea.focus(); else textareaField.focus();
+            //         autoGrowTextarea(textareaField); if(!isHidden) autoGrowTextarea(memoTextarea);
+            //     });
+            //     if (currentTask.memo && currentTask.memo.trim() !== "") {
+            //         memoIcon.classList.add('has-memo');
+            //     }
 
-                // 버그 수정: 이전에 열려 있던 메모 상태 복원
-                if (openMemos.has(currentTask.id.toString())) { // ID는 숫자로 저장될 수 있으므로 stringfy하여 비교
-                    memoContainer.classList.remove('hidden');
-                    memoIcon.setAttribute('aria-expanded', 'true');
-                }
+            //     // 버그 수정: 이전에 열려 있던 메모 상태 복원
+            //     if (openMemos.has(currentTask.id.toString())) { // ID는 숫자로 저장될 수 있으므로 stringfy하여 비교
+            //         memoContainer.classList.remove('hidden');
+            //         memoIcon.setAttribute('aria-expanded', 'true');
+            //     }
 
-                memoTextarea.addEventListener('input', (e) => {
-                    currentTask.memo = e.target.value; autoGrowTextarea(e.target);
-                    memoIcon.classList.toggle('has-memo', e.target.value.trim() !== "");
-                });
-            }
+            //     memoTextarea.addEventListener('input', (e) => {
+            //         currentTask.memo = e.target.value; autoGrowTextarea(e.target);
+            //         memoIcon.classList.toggle('has-memo', e.target.value.trim() !== "");
+            //     });
+            // }
             taskItem.appendChild(checkboxLabel); taskItem.appendChild(taskContentDiv);
             taskListDivEl.appendChild(taskItem);
             autoGrowTextarea(textareaField);
-            // 메모가 열린 상태로 복원되면 메모 텍스트 영역도 크기 조정
-            if (openMemos.has(currentTask.id.toString())) {
-                const memoTextarea = taskItem.querySelector('.memo-container textarea');
-                if (memoTextarea) autoGrowTextarea(memoTextarea);
-            }
+            // 메모 관련 코드 완전히 제거 (메모가 열린 상태로 복원되면 메모 텍스트 영역도 크기 조정)
+            // if (openMemos.has(currentTask.id.toString())) {
+            //     const memoTextarea = taskItem.querySelector('.memo-container textarea');
+            //     if (memoTextarea) autoGrowTextarea(memoTextarea);
+            // }
         });
         checkAllDone();
     }
@@ -1190,11 +1198,11 @@ document.addEventListener('DOMContentLoaded', () => {
              // 데이터 무결성 검사: entry 객체에 필수 속성 있는지 확인
             if (!entry || typeof entry.date === 'undefined' || !Array.isArray(entry.tasks) || typeof entry.achieved === 'undefined') {
                 console.warn(`Malformed history entry:`, entry);
-                return; // 손상된 항목은 렌더링하지 않고 건너뜀
+                return; // 손상된 항목은 렌더링하지 않고 건너뛰ㅁ
             }
             const entryDiv = document.createElement('div'); entryDiv.classList.add('history-entry'); entryDiv.dataset.achieved = entry.achieved ? "true" : "false"; const dateStrong = document.createElement('strong'); dateStrong.textContent = `${entry.date.replaceAll('-', '.')}. ${entry.achieved ? "🎯" : ""}`; entryDiv.appendChild(dateStrong); const ul = document.createElement('ul');
             entry.tasks.forEach(task => {
-                // 데이터 무결성 검사: task 객체에 필수 속성 있는지 확인
+                // 데이터 무결성 검사: task 객체에 필수 속성 있는지 확인 (memo 제거)
                 if(!task || typeof task.text !== 'string' || typeof task.completed !== 'boolean') {
                     console.warn(`Malformed task in history entry:`, task);
                     return; // 손상된 할 일은 건너뜀
@@ -1361,30 +1369,31 @@ document.addEventListener('DOMContentLoaded', () => {
                         allClonedItems.forEach((item, index) => {
                             if (index >= MAX_TASKS_CURRENT_MODE) item.remove();
                             else {
-                                const originalTaskItem = taskListDivForCapture.children[index];
-                                if (!originalTaskItem) return;
-                                const memoIconClone = item.querySelector('.memo-icon');
-                                const memoContainerClone = item.querySelector('.memo-container');
-                                if (currentAppMode === 'focus' && shareOptions.includeMemos) {
-                                    const originalMemoTextarea = originalTaskItem.querySelector('.memo-container textarea');
-                                    if (memoContainerClone && originalMemoTextarea && originalMemoTextarea.value.trim() !== "") {
-                                        memoContainerClone.classList.remove('hidden');
-                                        const memoTextareaClone = memoContainerClone.querySelector('textarea');
-                                        if (memoTextareaClone) {
-                                            const memoDiv = document.createElement('div');
-                                            memoDiv.textContent = originalMemoTextarea.value;
-                                            memoDiv.style.whiteSpace = 'pre-wrap'; memoDiv.style.wordBreak = 'break-word';
-                                            memoDiv.style.padding = getComputedStyle(memoTextareaClone).padding;
-                                            memoContainerClone.replaceChild(memoDiv, memoTextareaClone);
-                                        }
-                                    } else {
-                                        if (memoContainerClone) memoContainerClone.remove();
-                                        if (memoIconClone) memoIconClone.remove();
-                                    }
-                                } else {
-                                    if (memoContainerClone) memoContainerClone.remove();
-                                    if (memoIconClone) memoIconClone.remove();
-                                }
+                                // 메모 관련 요소는 더 이상 없으므로, 제거할 필요 없음
+                                // const originalTaskItem = taskListDivForCapture.children[index];
+                                // if (!originalTaskItem) return;
+                                // const memoIconClone = item.querySelector('.memo-icon');
+                                // const memoContainerClone = item.querySelector('.memo-container');
+                                // if (currentAppMode === 'focus' && shareOptions.includeMemos) { // shareOptions.includeMemos는 이미 없음
+                                //     const originalMemoTextarea = originalTaskItem.querySelector('.memo-container textarea');
+                                //     if (memoContainerClone && originalMemoTextarea && originalMemoTextarea.value.trim() !== "") {
+                                //         memoContainerClone.classList.remove('hidden');
+                                //         const memoTextareaClone = memoContainerClone.querySelector('textarea');
+                                //         if (memoTextareaClone) {
+                                //             const memoDiv = document.createElement('div');
+                                //             memoDiv.textContent = originalMemoTextarea.value;
+                                //             memoDiv.style.whiteSpace = 'pre-wrap'; memoDiv.style.wordBreak = 'break-word';
+                                //             memoDiv.style.padding = getComputedStyle(memoTextareaClone).padding;
+                                //             memoContainerClone.replaceChild(memoDiv, memoTextareaClone);
+                                //         }
+                                //     } else {
+                                //         if (memoContainerClone) memoContainerClone.remove();
+                                //         if (memoIconClone) memoIconClone.remove();
+                                //     }
+                                // } else {
+                                //     if (memoContainerClone) memoContainerClone.remove();
+                                //     if (memoIconClone) memoIconClone.remove();
+                                // }
                             }
                         });
                     }
@@ -1449,7 +1458,14 @@ document.addEventListener('DOMContentLoaded', () => {
             exportDataBtnEl.addEventListener('click', () => {
                 const currentThemeForExport = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
                 const settingsToExport = { appMode: currentAppMode, theme: currentThemeForExport, focusTaskCount: focusModeTaskCountSetting, shareOptions: shareOptions };
-                const dataToExport = { version: APP_VERSION_DATA_FORMAT, appSettings: settingsToExport, tasks: tasks, additionalTasks: additionalTasks, history: history, };
+                // tasks, history에서 memo 제거
+                const cleanTasks = tasks.map(({ id, text, completed }) => ({ id, text, completed }));
+                const cleanHistory = history.map(entry => ({
+                    ...entry,
+                    tasks: entry.tasks.map(({ id, text, completed }) => ({ id, text, completed }))
+                }));
+
+                const dataToExport = { version: APP_VERSION_DATA_FORMAT, appSettings: settingsToExport, tasks: cleanTasks, additionalTasks: additionalTasks, history: cleanHistory, };
                 const dataStr = JSON.stringify(dataToExport, null, 2);
                 const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
                 const exportFileDefaultName = `오늘셋_백업_${getTodayDateString()}.json`;
@@ -1477,12 +1493,24 @@ document.addEventListener('DOMContentLoaded', () => {
                                     importFileInputEl.value = ''; return;
                                 }
                                 const importedSettings = importedData.appSettings;
-                                if (importedSettings) applySettingsToLocalAndUI(importedSettings, 'local_import');
-                                tasks = importedData.tasks || [];
+                                if (importedSettings) {
+                                    // 가져온 shareOptions에서 includeMemos 제거
+                                    if (importedSettings.shareOptions && importedSettings.shareOptions.hasOwnProperty('includeMemos')) {
+                                        delete importedSettings.shareOptions.includeMemos;
+                                    }
+                                    applySettingsToLocalAndUI(importedSettings, 'local_import');
+                                }
+                                // 가져온 tasks에서 memo 제거
+                                tasks = (importedData.tasks || []).map(t => ({ id: t.id, text: t.text, completed: t.completed }));
                                 additionalTasks = importedData.additionalTasks || [];
-                                history = importedData.history || [];
+                                // 가져온 history entry의 tasks에서도 memo 제거
+                                history = (importedData.history || []).map(entry => ({
+                                    ...entry,
+                                    tasks: entry.tasks.map(t => ({ id: t.id, text: t.text, completed: t.completed }))
+                                }));
+
                                 // 데이터 무결성: tasks 배열의 길이를 5개로 유지 (혹시 모를 경우를 대비)
-                                while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
+                                while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false });} // 메모 제거
                                 if (tasks.length > 5) tasks = tasks.slice(0,5);
 
                                 loadContentDataFromLocalStorage(); // 가져온 데이터로 UI 렌더링 (로컬 초기화 로직이 포함됨)
@@ -1507,15 +1535,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.key === 'Escape') {
                 const authModal = document.getElementById('auth-modal');
                 if (authModal) { authModal.remove(); return; }
-                if (currentAppMode === 'focus') {
-                    const activeMemoContainer = document.querySelector('.memo-container:not(.hidden)');
-                    if (activeMemoContainer) {
-                        const taskItem = activeMemoContainer.closest('.task-item');
-                        const memoIcon = taskItem?.querySelector('.memo-icon');
-                        memoIcon?.click(); // 열려있는 메모를 닫습니다.
-                        return; // 메모를 닫았으므로 추가 섹션 닫기는 하지 않습니다.
-                    }
-                }
+                // 메모 닫기 관련 코드 제거
+                // if (currentAppMode === 'focus') {
+                //     const activeMemoContainer = document.querySelector('.memo-container:not(.hidden)');
+                //     if (activeMemoContainer) {
+                //         const taskItem = activeMemoContainer.closest('.task-item');
+                //         const memoIcon = taskItem?.querySelector('.memo-icon');
+                //         memoIcon?.click(); // 열려있는 메모를 닫습니다.
+                //         return; // 메모를 닫았으므로 추가 섹션 닫기는 하지 않습니다.
+                //     }
+                // }
                 let sectionClosed = false;
                 getSectionsArray().forEach(sec => {
                     const sectionElement = document.getElementById(sec.id);
@@ -1531,7 +1560,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 초기화 실행 ---
     async function initializeApp() {
-        console.log("Initializing app (v1.23.0 - Daily Reset, Toast & UI Fixes)...");
+        console.log("Initializing app (v1.24.0 - No Memos)...");
         if (!currentDateEl || !taskListDivEl || !authStatusContainerEl) {
             document.body.innerHTML = '<div style="text-align:center;padding:20px;">앱 로딩 오류: 필수 DOM 요소 누락. (DOM_MISSING)</div>'; return;
         }
@@ -1539,8 +1568,12 @@ document.addEventListener('DOMContentLoaded', () => {
         currentTheme = localStorage.getItem('oneulSetTheme') || 'dark';
         currentAppMode = localStorage.getItem('oneulSetMode') || 'simple';
         focusModeTaskCountSetting = parseInt(localStorage.getItem('oneulSetFocusTaskCountSetting') || '3', 10);
-        try { shareOptions = JSON.parse(localStorage.getItem('oneulSetShareOptions')) || { includeAdditional: false, includeMemos: false };
-        } catch(e) { shareOptions = { includeAdditional: false, includeMemos: false }; showUserFeedback("로컬 공유 설정 데이터 손상. 초기화합니다.", 'warning'); }
+        try { shareOptions = JSON.parse(localStorage.getItem('oneulSetShareOptions')) || { includeAdditional: false }; // includeMemos 제거
+            if (shareOptions.hasOwnProperty('includeMemos')) { // 이전 버전에서 저장된 includeMemos가 있다면 제거
+                delete shareOptions.includeMemos;
+                localStorage.setItem('oneulSetShareOptions', JSON.stringify(shareOptions));
+            }
+        } catch(e) { shareOptions = { includeAdditional: false }; showUserFeedback("로컬 공유 설정 데이터 손상. 초기화합니다.", 'warning'); }
 
         applySettingsToLocalAndUI({
             appMode: currentAppMode, theme: currentTheme,
@@ -1579,7 +1612,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.log("Post-login: Attempting to load content data from Firestore.");
                         // 2. 콘텐츠 데이터 로드 및 초기 동기화 (각 데이터 리스너는 여기서 시작)
                         // 이 함수 내에서 일별 초기화 로직이 포함되어 클라우드 데이터에 적용
-                        const firestoreContentLoaded = await loadContentDataFromFirestore(user.uid);
+                        await loadContentDataFromFirestore(user.uid);
 
                         // 각 데이터에 대한 실시간 리스너 시작
                         listenToTasksChanges(user.uid);
@@ -1606,8 +1639,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         appMode: localStorage.getItem('oneulSetMode') || 'simple',
                         theme: localStorage.getItem('oneulSetTheme') || 'dark',
                         focusTaskCount: parseInt(localStorage.getItem('oneulSetFocusTaskCountSetting') || '3', 10),
-                        shareOptions: JSON.parse(localStorage.getItem('oneulSetShareOptions') || '{"includeAdditional":false,"includeMemos":false}')
+                        shareOptions: JSON.parse(localStorage.getItem('oneulSetShareOptions') || '{"includeAdditional":false}') // includeMemos 제거
                     };
+                    if (localSettings.shareOptions.hasOwnProperty('includeMemos')) {
+                        delete localSettings.shareOptions.includeMemos;
+                    }
+
                     applySettingsToLocalAndUI(localSettings, 'local_logout');
                     loadContentDataFromLocalStorage(); // 로컬 데이터 로드 및 로컬 일별 초기화 처리
                     if(cloudSyncStatusDivEl) cloudSyncStatusDivEl.textContent = '로그인하여 데이터를 클라우드에 동기화하세요.';
