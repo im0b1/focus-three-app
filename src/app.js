@@ -1,10 +1,10 @@
-// src/app.js - v2.0.2-critical-bugfix-2 - Main Application Entry Point
+// src/app.js - v2.0.3-cdn-import-fix - Main Application Entry Point
 
 import { appState, subscribeToStateChanges, setState } from './state.js';
 import * as firebaseService from './services/firebase.js'; // Firebase 서비스 전체 임포트
 import { loadFromLocalStorage, saveToLocalStorage } from './services/localstorage.js';
-import { $, announceToScreenReader, showUserFeedback, getSectionsArray } from './utils.js';
-import { renderTasks, renderAdditionalTasks, renderHistory, updateStatsUI, renderStatsVisuals, applyAppModeUI, applyThemeUI, createAuthModal, updateAuthUI, autoGrowTextarea, displayCurrentDate, setupShareAsImageListener } from './ui/render.js'; // displayCurrentDate와 setupShareAsImageListener 임포트
+import { $, announceToScreenReader, showUserFeedback, getSectionsArray, getTodayDateString } from './utils.js'; // getTodayDateString 임포트 추가
+import { renderTasks, renderAdditionalTasks, renderHistory, updateStatsUI, renderStatsVisuals, applyAppModeUI, applyThemeUI, createAuthModal, updateAuthUI, autoGrowTextarea, displayCurrentDate, setupShareAsImageListener } from './ui/render.js';
 import { domElements } from './ui/domElements.js'; // DOM elements cache
 
 const APP_VERSION_DATA_FORMAT = "1.14.1-content-load-fix-data";
@@ -337,7 +337,7 @@ async function initializeAppStateFromStorage() {
 }
 
 async function initializeApp() {
-    console.log("Initializing app (v2.0.2-critical-bugfix-2)...");
+    console.log("Initializing app (v2.0.3-cdn-import-fix)...");
 
     // Initialize DOM elements cache
     domElements.init();
