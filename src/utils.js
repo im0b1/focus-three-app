@@ -1,6 +1,6 @@
-// src/utils.js - v2.0.0-refactor - Utility Functions Module
+// src/utils.js - v2.0.1-bugfix-1 - Utility Functions Module
 
-import { domElements } from './ui/domElements.js';
+import { domElements } from './ui/domElements.js'; // domElements를 임포트
 
 /**
  * Shorthand for document.querySelector.
@@ -86,6 +86,18 @@ export function getTodayDateString() {
  * @returns {Array<Object>} An array of section information objects.
  */
 export function getSectionsArray() {
+    // domElements 객체가 초기화되었는지 확인 (앱 시작 시 호출되므로 대부분 항상 초기화됨)
+    if (!domElements.toggleHistoryBtnEl) {
+        console.error("DOM elements are not fully initialized when getSectionsArray is called.");
+        // Fallback for robustness, though domElements.init() should prevent this
+        return [
+            { id: 'history-section', button: document.getElementById('toggle-history-btn'), baseText: '기록' },
+            { id: 'stats-section', button: document.getElementById('toggle-stats-btn'), baseText: '통계' },
+            { id: 'share-section', button: document.getElementById('toggle-share-btn'), baseText: '공유' },
+            { id: 'settings-section', button: document.getElementById('toggle-settings-btn'), baseText: '설정' }
+        ];
+    }
+
     return [
         { id: 'history-section', button: domElements.toggleHistoryBtnEl, baseText: '기록' },
         { id: 'stats-section', button: domElements.toggleStatsBtnEl, baseText: '통계' },
@@ -93,4 +105,3 @@ export function getSectionsArray() {
         { id: 'settings-section', button: domElements.toggleSettingsBtnEl, baseText: '설정' }
     ];
 }
-
