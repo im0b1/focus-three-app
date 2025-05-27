@@ -1,4 +1,4 @@
-/* style.css - v2.0.0-refactor */
+/* style.css - v2.0.1-bugfix-1 */
 
 /* 기본 스타일 초기화 */
 * {
@@ -41,7 +41,7 @@
 
     /* 다크 테마 */
     --bg-color-dark: #212529; --container-bg-color-dark: #2c3034; --text-color-primary-dark: #e9ecef; --text-color-secondary-dark: #ced4da; --text-color-tertiary-dark: #adb5bd; --border-color-dark: #495057; --input-focus-bg-dark: #3e444a; --input-focus-shadow-dark: rgba(13, 110, 253, 0.35); --completed-text-color-dark: #6c757d; --button-primary-bg-dark: #5dade2; --button-primary-hover-bg-dark: #4a90e2; --button-secondary-bg-dark: #495057; --button-secondary-hover-bg-dark: #5a6268; --button-secondary-text-dark: #e9ecef; --button-text-color-dark: #212529; --all-done-bg-dark: #2a3b2c; --all-done-text-dark: #a5d6a7; --section-bg-dark: #343a40; --section-border-dark: #495057; --theme-toggle-hover-bg-dark: rgba(255,255,255,0.1); --link-color-dark: #5dade2; --link-hover-color-dark: #8ecae6; --stats-content-bg-dark: #3b4148; --share-content-bg-dark: #3b4148; --share-button-bg-dark: #777; --share-button-hover-bg-dark: #999;
-    --footer-button-active-bg-dark: var(--button-primary-bg-dark); --footer-button-active-text-dark: #212529;
+    --footer-button-active-bg-dark: var(--button-primary-bg-dark); --footer-button-active-text-dark: #e9ecef; /* Changed from #212529 for visibility */
     --custom-checkbox-border-dark: #7f8c8d;
     --custom-checkbox-checked-bg-dark: var(--button-primary-bg-dark);
     --custom-checkbox-checkmark-dark: #FFFFFF; /* 개선점: 다크 모드 체크박스 아이콘 색상을 흰색으로 변경 */
@@ -73,7 +73,7 @@
 body.dark-theme {
     /* 다크 테마 덮어쓰기 */
     --bg-color: var(--bg-color-dark); --container-bg-color: var(--container-bg-color-dark); --text-color-primary: var(--text-color-primary-dark); --text-color-secondary: var(--text-color-secondary-dark); --text-color-tertiary: var(--text-color-tertiary-dark); --border-color: var(--border-color-dark); --input-focus-bg: var(--input-focus-bg-dark); --input-focus-shadow: var(--input-focus-shadow-dark); --completed-text-color: var(--completed-text-color-dark); --button-primary-bg: var(--button-primary-bg-dark); --button-primary-hover-bg: var(--button-primary-hover-bg-dark); --button-secondary-bg: var(--button-secondary-bg-dark); --button-secondary-hover-bg: var(--button-secondary-hover-bg-dark); --button-secondary-text: var(--button-secondary-text-dark); --button-text-color: var(--button-text-color-dark); --all-done-bg: var(--all-done-bg-dark); --all-done-text: var(--all-done-text-dark); --section-bg: var(--section-bg-dark); --section-border: var(--section-border-dark); --theme-toggle-hover-bg: var(--theme-toggle-hover-bg-dark); --link-color: var(--link-color-dark); --link-hover-color: var(--link-hover-color-dark); --stats-content-bg: var(--stats-content-bg-dark); --share-content-bg: var(--share-content-bg-dark); --share-button-bg: var(--share-button-bg-dark); --share-button-hover-bg: var(--share-button-hover-bg-dark);
-    --footer-button-active-bg: var(--button-primary-bg-dark); --footer-button-active-text: var(--button-primary-bg-dark);
+    --footer-button-active-bg: var(--button-primary-bg-dark); --footer-button-active-text: var(--footer-button-active-text-dark);
     --custom-checkbox-border: var(--custom-checkbox-border-dark);
     --custom-checkbox-checked-bg: var(--custom-checkbox-checked-bg-dark);
     --custom-checkbox-checkmark: var(--custom-checkbox-checkmark-dark);
@@ -720,4 +720,3 @@ body.simple-mode .task-item {
         font-size: 0.85em;
     }
 }
-
