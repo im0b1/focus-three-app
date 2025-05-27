@@ -1,4 +1,4 @@
-/* style.css - v1.24.0-no-memos */
+/* style.css - v2.0.0-refactor */
 
 /* 기본 스타일 초기화 */
 * {
@@ -30,8 +30,6 @@
     --custom-checkbox-border-light: #bdc3c7;
     --custom-checkbox-checked-bg-light: var(--button-primary-bg-light);
     --custom-checkbox-checkmark-light: #ffffff;
-    --memo-icon-color-light: #7f8c8d; /* 삭제될 변수 */
-    --memo-icon-hover-color-light: #34495e; /* 삭제될 변수 */ --memo-icon-active-color-light: var(--button-primary-bg-light); /* 삭제될 변수 */
     --additional-task-bg-light: #f9fafb; --additional-task-border-light: #e5e7eb;
     --chart-grid-color-light: rgba(0, 0, 0, 0.1); --chart-font-color-light: #2c3e50;
     --stats-visual-item-bg-light: #e9ecef;
@@ -47,8 +45,6 @@
     --custom-checkbox-border-dark: #7f8c8d;
     --custom-checkbox-checked-bg-dark: var(--button-primary-bg-dark);
     --custom-checkbox-checkmark-dark: #FFFFFF; /* 개선점: 다크 모드 체크박스 아이콘 색상을 흰색으로 변경 */
-    --memo-icon-color-dark: #adb5bd; /* 삭제될 변수 */
-    --memo-icon-hover-color-dark: #e9ecef; /* 삭제될 변수 */ --memo-icon-active-color-dark: var(--button-primary-bg-dark); /* 삭제될 변수 */
     --additional-task-bg-dark: #373c40; --additional-task-border-dark: #454b50;
     --chart-grid-color-dark: rgba(255, 255, 255, 0.1); --chart-font-color-dark: #e9ecef;
     --stats-visual-item-bg-dark: #495057;
@@ -66,8 +62,6 @@
     --custom-checkbox-border: var(--custom-checkbox-border-light);
     --custom-checkbox-checked-bg: var(--custom-checkbox-checked-bg-light);
     --custom-checkbox-checkmark: var(--custom-checkbox-checkmark-light);
-    --memo-icon-color: var(--memo-icon-color-light); /* 삭제 */
-    --memo-icon-hover-color: var(--memo-icon-hover-color-light); /* 삭제 */ --memo-icon-active-color: var(--memo-icon-active-color-light); /* 삭제 */
     --additional-task-bg: var(--additional-task-bg-light); --additional-task-border: var(--additional-task-border-light);
     --chart-grid-color: var(--chart-grid-color-light); --chart-font-color: var(--chart-font-color-light);
     --stats-visual-item-bg: var(--stats-visual-item-bg-light);
@@ -79,12 +73,10 @@
 body.dark-theme {
     /* 다크 테마 덮어쓰기 */
     --bg-color: var(--bg-color-dark); --container-bg-color: var(--container-bg-color-dark); --text-color-primary: var(--text-color-primary-dark); --text-color-secondary: var(--text-color-secondary-dark); --text-color-tertiary: var(--text-color-tertiary-dark); --border-color: var(--border-color-dark); --input-focus-bg: var(--input-focus-bg-dark); --input-focus-shadow: var(--input-focus-shadow-dark); --completed-text-color: var(--completed-text-color-dark); --button-primary-bg: var(--button-primary-bg-dark); --button-primary-hover-bg: var(--button-primary-hover-bg-dark); --button-secondary-bg: var(--button-secondary-bg-dark); --button-secondary-hover-bg: var(--button-secondary-hover-bg-dark); --button-secondary-text: var(--button-secondary-text-dark); --button-text-color: var(--button-text-color-dark); --all-done-bg: var(--all-done-bg-dark); --all-done-text: var(--all-done-text-dark); --section-bg: var(--section-bg-dark); --section-border: var(--section-border-dark); --theme-toggle-hover-bg: var(--theme-toggle-hover-bg-dark); --link-color: var(--link-color-dark); --link-hover-color: var(--link-hover-color-dark); --stats-content-bg: var(--stats-content-bg-dark); --share-content-bg: var(--share-content-bg-dark); --share-button-bg: var(--share-button-bg-dark); --share-button-hover-bg: var(--share-button-hover-bg-dark);
-    --footer-button-active-bg: var(--button-primary-bg-dark); --footer-button-active-text: var(--footer-button-active-text-dark);
+    --footer-button-active-bg: var(--button-primary-bg-dark); --footer-button-active-text: var(--button-primary-bg-dark);
     --custom-checkbox-border: var(--custom-checkbox-border-dark);
     --custom-checkbox-checked-bg: var(--custom-checkbox-checked-bg-dark);
     --custom-checkbox-checkmark: var(--custom-checkbox-checkmark-dark);
-    --memo-icon-color: var(--memo-icon-color-dark); /* 삭제 */
-    --memo-icon-hover-color: var(--memo-icon-hover-color-dark); /* 삭제 */ --memo-icon-active-color: var(--memo-icon-active-color-dark); /* 삭제 */
     --additional-task-bg: var(--additional-task-bg-dark); --additional-task-border: var(--additional-task-border-dark);
     --chart-grid-color: var(--chart-grid-color-dark); --chart-font-color: var(--chart-font-color-dark);
     --stats-visual-item-bg: var(--stats-visual-item-bg-dark);
@@ -184,18 +176,16 @@ main { margin-bottom: 30px; }
 /* --- 할 일 목록 스타일 --- */
 .task-list { }
 .task-item {
-    display: grid; /* 기존: grid-template-columns: auto 1fr; grid-template-areas: "check content" ". memo"; */
-    grid-template-columns: auto 1fr; /* 메모 제거로 인한 레이아웃 단순화 */
-    grid-template-areas: "check content"; /* 메모 제거로 인한 레이아웃 단순화 */
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "check content";
     align-items: start; gap: 0 12px; padding: 12px 0;
     border-bottom: 1px solid var(--border-color);
-    /* transition: border-color 0.3s ease; -- 제거하여 깜빡임 방지 */
 }
 .task-item:last-child { border-bottom: none; }
 
 .custom-checkbox-label { grid-area: check; }
 .task-item-content { grid-area: content; display: flex; align-items: flex-start; }
-/* .memo-container { grid-area: memo; margin-top: 5px; } -- 메모 제거 */
 
 .custom-checkbox-label {
     position: relative; display: inline-flex;
@@ -245,10 +235,6 @@ main { margin-bottom: 30px; }
     transition: color 0.3s ease, text-decoration-color 0.3s ease;
 }
 
-/* .memo-icon { ... } -- 메모 제거 */
-/* .memo-container textarea { ... } -- 메모 제거 */
-/* .memo-container.hidden { ... } -- 메모 제거 */
-
 #all-done-message {
     text-align: center; margin-top: 25px; padding: 12px; background-color: var(--all-done-bg);
     color: var(--all-done-text); border-radius: 6px; font-weight: 500; opacity: 0; transform: translateY(20px) scale(0.95);
@@ -292,7 +278,7 @@ main { margin-bottom: 30px; }
     text-decoration: line-through; color: var(--completed-text-color);
 }
 .delete-additional-task-btn {
-    background: none; border: none; color: var(--text-color-tertiary); /* 메모 아이콘 색상 변수 대신 직접 색상 사용 */
+    background: none; border: none; color: var(--text-color-tertiary);
     font-size: 0.9em; padding: 4px; cursor: pointer; border-radius: 4px;
     transition: color 0.2s, background-color 0.2s;
 }
@@ -435,8 +421,6 @@ body.simple-mode .task-count-setting,
 body.simple-mode #additional-tasks-section,
 body.simple-mode .stats-visuals,
 body.simple-mode #share-as-image-btn-container,
-/* body.simple-mode .memo-icon, */ /* 메모 제거 */
-/* body.simple-mode .memo-container, */ /* 메모 제거 */
 body.simple-mode #settings-section .settings-content,
 body.simple-mode .share-options {
     display: none !important;
@@ -633,10 +617,6 @@ body.simple-mode .task-item {
         font-size: 16px;
     }
 
-
-    /* .memo-icon { padding: 7px; font-size: 0.95em; } -- 메모 제거 */
-    /* .memo-container textarea { font-size: 0.85em; padding: 5px 7px;} -- 메모 제거 */
-
     #all-done-message { margin-top: 20px; padding: 10px; font-size: 0.9em; }
 
     #additional-tasks-section { padding: 15px; margin-top: 25px; }
@@ -666,7 +646,6 @@ body.simple-mode .task-item {
     /* 모바일에서 인증 모달 패딩 조정 */
     .auth-modal-content {
         padding: 20px;
-        /* margin: 10% auto; */ /* 모바일에서는 상단 마진 줄이기 */
     }
     .auth-modal-content h2 {
         font-size: 1.3em;
@@ -674,7 +653,6 @@ body.simple-mode .task-item {
 }
 
 /* 이미지 캡처용 임시 스타일 */
-/* .for-capture .memo-container:not(.hidden) textarea { ... } -- 메모 제거 */
 
 /* --- Toast Message Styles (v1.13.1-toast-message) --- */
 #toast-container {
@@ -742,3 +720,4 @@ body.simple-mode .task-item {
         font-size: 0.85em;
     }
 }
+

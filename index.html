@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>오늘셋 - 오늘의 할 일 (v1.12.1-firebase-init-bugfix)</title> <!-- 버전 업데이트 -->
+    <title>오늘셋 - 오늘의 할 일 (v2.0.0-refactor)</title> <!-- 버전 업데이트 -->
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
@@ -19,24 +19,23 @@
     <link rel="icon" href="/favicon.ico">
 
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="<https://fonts.googleapis.com>">
+    <link rel="preconnect" href="<https://fonts.gstatic.com>" crossorigin>
+    <link href="<https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap>" rel="stylesheet">
 
     <!-- Font Awesome CSS - 로드 방식 및 버전 확인 -->
-    <!-- 이전 버전: <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> -->
-    <!-- 최신 버전으로 시도 (또는 사용 중인 안정적인 버전 명시) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="<https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css>" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <link rel="stylesheet" href="style.css"> <!-- style.css는 Font Awesome 이후에 로드 -->
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="<https://cdn.jsdelivr.net/npm/chart.js>"></script>
+    <script src="<https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js>"></script>
 
     <!-- Firebase SDK 추가 -->
-    <script defer src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <!-- 호환성 버전 사용: 전역 'firebase' 객체 제공 -->
+    <script defer src="<https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js>"></script>
+    <script defer src="<https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js>"></script>
+    <script defer src="<https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js>"></script>
 
 </head>
 <body class="simple-mode dark-theme"> <!-- 기본 심플모드, 다크테마 -->
@@ -98,7 +97,7 @@
                 <button id="toggle-settings-btn" aria-controls="settings-section">설정</button>
             </div>
             <div class="footer-support">
-                 <a href="https://0b1.vercel.app/" target="_blank" rel="noopener noreferrer" class="support-link">📝 개발자 블로그</a>
+                 <a href="<https://0b1.vercel.app/>" target="_blank" rel="noopener noreferrer" class="support-link">📝 개발자 블로그</a>
             </div>
 
             <div id="history-section" class="hidden toggle-section">
@@ -135,9 +134,6 @@
                         <label for="share-include-additional">
                             <input type="checkbox" id="share-include-additional"> 추가 과제 포함
                         </label>
-                        <label for="share-include-memos" id="share-include-memos-label" class="hidden">
-                            <input type="checkbox" id="share-include-memos"> 메모 포함
-                        </label>
                     </div>
                     <div class="share-buttons">
                         <button id="copy-link-btn" title="링크 복사"><i class="fas fa-link"></i> 링크 복사</button>
@@ -168,8 +164,11 @@
                  <p class="simple-mode-settings-info">더 많은 설정은 집중 모드에서 사용 가능합니다.</p>
             </section>
         </footer>
+        <div id="toast-container"></div> <!-- 토스트 메시지 컨테이너 추가 -->
         <div id="live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
     </div>
-    <script src="script.js"></script>
+    <!-- 모듈 기반 JS 파일 로드 -->
+    <script type="module" src="/src/app.js"></script>
 </body>
 </html>
+

@@ -1,11 +1,17 @@
-// sw.js - v1.12.1-fix-syntax (PWA Syntax fix)
+// sw.js - v2.0.0-refactor (PWA Syntax fix)
 
-const CACHE_NAME = 'oneulset-cache-v1.12.1'; // 캐시 이름 업데이트 (버전 반영)
+const CACHE_NAME = 'oneulset-cache-v2.0.0'; // 캐시 이름 업데이트 (버전 반영)
 const urlsToCache = [
   '/',
   '/index.html',
   '/style.css',
-  '/script.js',
+  '/src/app.js', // 업데이트된 경로
+  '/src/state.js',
+  '/src/services/firebase.js',
+  '/src/services/localstorage.js',
+  '/src/ui/domElements.js',
+  '/src/ui/render.js',
+  '/src/utils.js',
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
@@ -56,6 +62,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Firebase 관련 요청은 캐시하지 않음
+  if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('firebaseauth.googleapis.com')) {
+      event.respondWith(fetch(event.request));
+      return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((cachedResponse) => {
@@ -65,25 +77,20 @@ self.addEventListener('fetch', (event) => {
 
         return fetch(event.request).then(
           (networkResponse) => {
-            if (networkResponse && networkResponse.ok) {
-              if (!event.request.url.includes('firestore.googleapis.com') && !event.request.url.includes('firebaseauth.googleapis.com')) {
-                  const responseToCache = networkResponse.clone();
-                  caches.open(CACHE_NAME)
+            // 네트워크 응답이 유효하면 캐시에 저장
+            if (networkResponse && networkResponse.ok || networkResponse.type === 'opaque') {
+                const responseToCache = networkResponse.clone();
+                caches.open(CACHE_NAME)
                     .then((cache) => {
-                      cache.put(event.request, responseToCache);
+                        cache.put(event.request, responseToCache);
                     });
-              }
-            } else if (networkResponse && networkResponse.type === 'opaque') {
-                 const responseToCache = networkResponse.clone();
-                 caches.open(CACHE_NAME)
-                   .then((cache) => {
-                     cache.put(event.request, responseToCache);
-                   });
             }
             return networkResponse;
           }
         ).catch(error => {
           console.error('[Service Worker] Fetch failed, no cache match:', error, event.request.url);
+          // 네트워크 오류 발생 시 대체 응답 또는 오프라인 페이지 제공
+          // 현재는 간단한 네트워크 오류 응답을 제공합니다.
           return new Response("Network error occurred", {
             status: 408,
             headers: { "Content-Type": "text/plain" },
@@ -92,3 +99,4 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
