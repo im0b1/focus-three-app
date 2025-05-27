@@ -1,4 +1,4 @@
-// src/ui/domElements.js - v2.0.0-refactor - DOM Elements Cache Module
+// src/ui/domElements.js - v2.0.1-bugfix-1 - DOM Elements Cache Module
 
 // This object will hold all cached DOM elements
 export const domElements = {
@@ -47,6 +47,7 @@ export const domElements = {
     importFileInputEl: null,
     currentSettingsContentDiv: null,
     simpleModeSettingsInfoEl: null,
+    settingsSectionEl: null, // ADDED: settingsSectionEl was missing
 
     // Global / Modals
     liveRegionEl: null,
@@ -100,6 +101,7 @@ export const domElements = {
         this.importFileInputEl = document.getElementById('import-file-input');
         this.currentSettingsContentDiv = document.querySelector('#settings-section .settings-content');
         this.simpleModeSettingsInfoEl = document.querySelector('#settings-section .simple-mode-settings-info');
+        this.settingsSectionEl = document.getElementById('settings-section'); // ADDED this line
 
         // Global / Modals
         this.liveRegionEl = document.getElementById('live-region');
@@ -111,4 +113,3 @@ export const domElements = {
         }
     }
 };
-
