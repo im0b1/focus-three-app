@@ -1,11 +1,11 @@
-// sw.js - v2.0.0-refactor (PWA Syntax fix)
+// sw.js - v2.0.2-critical-bugfix-2 (PWA Syntax fix & URL fix)
 
-const CACHE_NAME = 'oneulset-cache-v2.0.0'; // 캐시 이름 업데이트 (버전 반영)
+const CACHE_NAME = 'oneulset-cache-v2.0.2'; // 캐시 이름 업데이트 (버전 반영)
 const urlsToCache = [
   '/',
   '/index.html',
   '/style.css',
-  '/src/app.js', // 업데이트된 경로
+  '/src/app.js',
   '/src/state.js',
   '/src/services/firebase.js',
   '/src/services/localstorage.js',
@@ -15,11 +15,14 @@ const urlsToCache = [
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
+  // 외부 CDN URL은 직접 문자열로 포함하여 올바른 경로로 캐싱되도록 합니다.
   '<https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap>',
-  // index.html에서 사용되는 최신 Font Awesome 버전으로 업데이트
   '<https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css>',
   '<https://cdn.jsdelivr.net/npm/chart.js>',
   '<https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js>',
+  '<https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js>',
+  '<https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js>',
+  '<https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js>',
 ];
 
 self.addEventListener('install', (event) => {
@@ -62,7 +65,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Firebase 관련 요청은 캐시하지 않음
+  // Firebase 관련 요청은 캐시하지 않음 (항상 네트워크 우선)
   if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('firebaseauth.googleapis.com')) {
       event.respondWith(fetch(event.request));
       return;
@@ -78,11 +81,15 @@ self.addEventListener('fetch', (event) => {
         return fetch(event.request).then(
           (networkResponse) => {
             // 네트워크 응답이 유효하면 캐시에 저장
+            // Opaque Response (CORS 제약이 있는 외부 리소스)도 캐시할 수 있도록 합니다.
             if (networkResponse && networkResponse.ok || networkResponse.type === 'opaque') {
                 const responseToCache = networkResponse.clone();
                 caches.open(CACHE_NAME)
                     .then((cache) => {
-                        cache.put(event.request, responseToCache);
+                      // 요청 URL이 캐시 목록에 명시적으로 포함된 경우에만 캐시 (선택 사항)
+                      // 또는 모든 유효한 GET 요청을 캐시할 수 있습니다.
+                      // 여기서는 일단 모든 유효한 응답을 캐시하도록 합니다.
+                      cache.put(event.request, responseToCache);
                     });
             }
             return networkResponse;
@@ -99,4 +106,3 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
-
