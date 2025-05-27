@@ -1,10 +1,10 @@
-// src/app.js - v2.0.0-refactor - Main Application Entry Point
+// src/app.js - v2.0.2-critical-bugfix-2 - Main Application Entry Point
 
 import { appState, subscribeToStateChanges, setState } from './state.js';
-import { initializeFirebase, signInWithEmailPassword, signUpWithEmailPassword, signInWithGoogle, signOutUser, loadFirebaseContent, listenToFirestoreChanges, stopFirestoreListeners, syncDataToFirestore } from './services/firebase.js';
+import * as firebaseService from './services/firebase.js'; // Firebase 서비스 전체 임포트
 import { loadFromLocalStorage, saveToLocalStorage } from './services/localstorage.js';
-import { $, displayCurrentDate, getTodayDateString, announceToScreenReader, showUserFeedback, getSectionsArray } from './utils.js';
-import { renderTasks, renderAdditionalTasks, renderHistory, updateStatsUI, renderStatsVisuals, applyAppModeUI, applyThemeUI, createAuthModal, updateAuthUI, autoGrowTextarea } from './ui/render.js';
+import { $, announceToScreenReader, showUserFeedback, getSectionsArray } from './utils.js';
+import { renderTasks, renderAdditionalTasks, renderHistory, updateStatsUI, renderStatsVisuals, applyAppModeUI, applyThemeUI, createAuthModal, updateAuthUI, autoGrowTextarea, displayCurrentDate, setupShareAsImageListener } from './ui/render.js'; // displayCurrentDate와 setupShareAsImageListener 임포트
 import { domElements } from './ui/domElements.js'; // DOM elements cache
 
 const APP_VERSION_DATA_FORMAT = "1.14.1-content-load-fix-data";
@@ -13,10 +13,10 @@ let isInitialFirestoreLoadComplete = false;
 // --- Event Handlers ---
 function handleAuthButtonClick(type) {
     createAuthModal(type, async (email, password) => {
-        if (type === 'login') await signInWithEmailPassword(email, password);
-        else await signUpWithEmailPassword(email, password);
+        if (type === 'login') await firebaseService.signInWithEmailPassword(email, password);
+        else await firebaseService.signUpWithEmailPassword(email, password);
     }, async () => {
-        await signInWithGoogle();
+        await firebaseService.signInWithGoogle();
         if (appState.currentUser) domElements.authModal.remove(); // Close modal on successful Google sign-in
     });
 }
@@ -49,15 +49,12 @@ function handleTaskCountChange(e) {
     }
 }
 
-function handleCoreTaskChange(index, field, value) {
+function handleCoreTaskChange(id, field, value) {
     setState(state => {
-        const task = state.tasks[index];
+        const task = state.tasks.find(t => t.id == id);
         if (task) {
             task[field] = value;
-            if (field === 'completed') {
-                domElements.taskListDivEl.children[index].classList.toggle('completed', value);
-                renderTasks(); // Re-render to update all-done message
-            }
+            // No direct DOM manipulation here, let renderTasks() handle it via state subscription
         }
     });
 }
@@ -111,10 +108,13 @@ function toggleSection(sectionIdToToggle) {
         const isSimpleMode = appState.settings.appMode === 'simple';
 
         // Visibility based on mode (if it's a section with conditional visibility)
-        if (sec.id === 'stats-section') $(domElements.statsVisualsContainerEl).classList.toggle('hidden', isSimpleMode);
-        if (sec.id === 'share-section') $(domElements.shareAsImageBtnContainerEl).classList.toggle('hidden', isSimpleMode);
-        if (sec.id === 'settings-section') $(domElements.currentSettingsContentDiv).classList.toggle('hidden', isSimpleMode);
-        if (sec.id === 'share-section') $(domElements.shareOptionsDivEl).classList.toggle('hidden', isSimpleMode);
+        if (sec.id === 'stats-section') domElements.statsVisualsContainerEl.classList.toggle('hidden', isSimpleMode);
+        if (sec.id === 'share-section') domElements.shareAsImageBtnContainerEl.classList.toggle('hidden', isSimpleMode);
+        if (sec.id === 'settings-section') {
+            if(domElements.simpleModeSettingsInfoEl) domElements.simpleModeSettingsInfoEl.classList.toggle('hidden', !isSimpleMode);
+            if(domElements.currentSettingsContentDiv) domElements.currentSettingsContentDiv.classList.toggle('hidden', isSimpleMode);
+        }
+        if (sec.id === 'share-section') domElements.shareOptionsDivEl.classList.toggle('hidden', isSimpleMode);
 
 
         if (sec.id === sectionIdToToggle) {
@@ -256,35 +256,42 @@ async function initializeAppStateFromStorage() {
     console.log("Initializing app state from local storage or Firestore...");
 
     const todayDateStr = getTodayDateString();
-    let localData = loadFromLocalStorage();
+    let localData = loadFromLocalStorage(); // This updates appState with local data
     let firestoreData = null;
 
     if (appState.currentUser) {
         try {
-            firestoreData = await loadFirebaseContent(appState.currentUser.uid);
-            // If Firestore data is present and newer, or local data is empty, prefer Firestore.
-            // Simplified check: if Firestore loaded data, we'll process it.
+            firestoreData = await firebaseService.loadFirebaseContent(appState.currentUser.uid);
             if (firestoreData) {
                  console.log("Firestore data loaded successfully.");
+                 // Override local data with Firestore data if it exists and is valid
+                 setState(state => {
+                     state.tasks = firestoreData.tasks;
+                     state.additionalTasks = firestoreData.additionalTasks;
+                     state.history = firestoreData.history;
+                 }, { skipSave: true, source: 'firestore_load' });
             }
         } catch (error) {
             console.warn("Failed to load content from Firestore, falling back to local storage:", error);
             showUserFeedback("클라우드 데이터 로드 중 오류 발생. 오프라인 모드로 전환됩니다.", 'error');
+            // State is already set from localData at this point, so no need to re-load.
         }
     }
 
-    let dataToProcess = firestoreData || localData;
-    let currentTasks = dataToProcess.tasks;
-    let currentAdditionalTasks = dataToProcess.additionalTasks;
-    let currentHistory = dataToProcess.history;
+    // Use current state (which is either local or firebase data) for daily reset processing
+    let currentTasks = appState.tasks;
+    let currentAdditionalTasks = appState.additionalTasks;
+    let currentHistory = appState.history;
 
-    // Daily reset logic
-    const lastProcessedDate = localData.settings.lastDate; // Use local storage's last date for reset trigger
+    // Daily reset logic based on last processed date in appState.settings
+    const lastProcessedDate = appState.settings.lastDate;
     let shouldResetTasks = (lastProcessedDate !== todayDateStr);
 
     if (shouldResetTasks) {
         console.log(`Daily reset triggered: Last processed date (${lastProcessedDate}) !== Today (${todayDateStr}).`);
         const historicalFocusModeTaskCount = parseInt(localStorage.getItem('oneulSetFocusTaskCountSettingBeforeReset') || '3', 10);
+
+        // Ensure tasksForHistory is based on currentTasks (which holds loaded data)
         const tasksForHistory = currentTasks.slice(0, historicalFocusModeTaskCount);
         const cleanedTasksForHistory = tasksForHistory.map(t => ({
             id: t?.id || Date.now() + Math.random(),
@@ -312,30 +319,35 @@ async function initializeAppStateFromStorage() {
         showUserFeedback("새로운 날이 시작되었습니다. 할 일 목록이 초기화되었습니다.", 'info');
     }
 
-    // Ensure tasks array length is 5
+    // Ensure tasks array length is 5 after reset/load
     while (currentTasks.length < 5) {
         currentTasks.push({ id: Date.now() + currentTasks.length + Math.random(), text: '', completed: false });
     }
     if (currentTasks.length > 5) currentTasks = currentTasks.slice(0, 5);
 
+    // Final update to state with processed data
     setState(state => {
         state.tasks = currentTasks;
         state.additionalTasks = currentAdditionalTasks;
         state.history = currentHistory;
         state.settings.lastDate = todayDateStr; // Mark today as processed
-    }, { skipSave: true }); // Don't save yet, will be saved after full init
+    }, { skipSave: true }); // Don't save yet, state subscription will handle it after full init
 
     console.log("App state loaded/processed.");
 }
 
 async function initializeApp() {
-    console.log("Initializing app (v2.0.0-refactor)...");
+    console.log("Initializing app (v2.0.2-critical-bugfix-2)...");
 
     // Initialize DOM elements cache
     domElements.init();
 
-    // Set initial UI based on local storage
-    await initializeAppStateFromStorage(); // This processes daily reset and loads initial data
+    // Initialize Firebase (even if not logged in, prepares SDK)
+    firebaseService.initializeFirebase();
+
+    // Set initial UI based on local storage (and process daily reset)
+    // This will populate appState with initial data.
+    await initializeAppStateFromStorage();
 
     // Initial UI render based on the processed state
     applySettingsAndRenderUI(appState.settings, 'local_init');
@@ -354,7 +366,7 @@ async function initializeApp() {
                 announceToScreenReader(`${user.displayName || user.email}님, 환영합니다.`);
                 isInitialFirestoreLoadComplete = false; // Firebase initial load started
                 try {
-                    // Load and apply settings from Firestore, then start settings listener
+                    // 1. Load and apply settings from Firestore, then start settings listener
                     const firestoreSettings = await firebaseService.loadAppSettingsFromFirestore(user.uid);
                     if (firestoreSettings) {
                         setState(state => { state.settings = { ...state.settings, ...firestoreSettings }; });
@@ -365,10 +377,21 @@ async function initializeApp() {
                     }
                     firebaseService.listenToAppSettingsChanges(user.uid);
 
-                    // Load content data from Firestore (which includes daily reset logic for cloud data)
-                    await firebaseService.loadFirebaseContent(user.uid); // This updates appState directly
+                    // 2. Load content data from Firestore and apply to state
+                    // This will happen AFTER the daily reset logic from initializeAppStateFromStorage,
+                    // ensuring Firestore data is prioritized if loaded successfully.
+                    const newFirestoreContent = await firebaseService.loadFirebaseContent(user.uid);
+                    if (newFirestoreContent) {
+                         setState(state => {
+                             state.tasks = newFirestoreContent.tasks;
+                             state.additionalTasks = newFirestoreContent.additionalTasks;
+                             state.history = newFirestoreContent.history;
+                         }, { source: 'firestore_override' });
+                         console.log("Post-login: Firestore content data applied.");
+                    }
 
-                    // Start real-time listeners for content data
+
+                    // 3. Start real-time listeners for content data
                     firebaseService.listenToTasksChanges(user.uid);
                     firebaseService.listenToAdditionalTasksChanges(user.uid);
                     firebaseService.listenToHistoryChanges(user.uid);
@@ -379,13 +402,14 @@ async function initializeApp() {
                     console.error("Error during post-login Firebase operations:", error);
                     domElements.cloudSyncStatusDivEl.textContent = `클라우드 데이터 처리 오류.`;
                     showUserFeedback("클라우드 데이터 처리 중 오류 발생. 오프라인 모드로 전환됩니다.", 'error');
-                    await initializeAppStateFromStorage(); // Fallback to local and re-render
+                    // Fallback to local data is already handled by initializeAppStateFromStorage being called initially
                 } finally {
                     isInitialFirestoreLoadComplete = true; // Firebase initial load completed
                 }
             } else { // User logged out
                 console.log("Auth state changed: User logged out.");
-                stopFirestoreListeners(); // Stop all Firestore listeners
+                firebaseService.signOutUser(); // Ensure Firebase signOut is called
+                firebaseService.stopFirestoreListeners(); // Stop all Firestore listeners
                 setState(state => { state.currentUser = null; }, { skipSave: true }); // Clear currentUser in state
                 isInitialFirestoreLoadComplete = false;
                 await initializeAppStateFromStorage(); // Reload local state
@@ -407,7 +431,7 @@ function setupEventListeners() {
     // Auth
     domElements.loginBtnEl.addEventListener('click', () => handleAuthButtonClick('login'));
     domElements.signupBtnEl.addEventListener('click', () => handleAuthButtonClick('signup'));
-    domElements.logoutBtnEl.addEventListener('click', signOutUser);
+    domElements.logoutBtnEl.addEventListener('click', firebaseService.signOutUser); // Directly call signOutUser from firebaseService
 
     // Network status
     window.addEventListener('online', () => { updateAuthUI(appState.currentUser); showUserFeedback("온라인 상태로 전환되었습니다.", 'info'); });
@@ -422,22 +446,20 @@ function setupEventListeners() {
     domElements.taskListDivEl.addEventListener('change', (e) => {
         if (e.target.type === 'checkbox' && e.target.id.startsWith('task-checkbox-')) {
             const id = e.target.id.replace('task-checkbox-', '');
-            const index = appState.tasks.findIndex(t => t.id == id);
-            if (index !== -1) handleCoreTaskChange(index, 'completed', e.target.checked);
+            handleCoreTaskChange(id, 'completed', e.target.checked);
         }
     });
     domElements.taskListDivEl.addEventListener('input', (e) => {
         if (e.target.tagName === 'TEXTAREA' && e.target.parentElement.classList.contains('task-item-content')) {
             autoGrowTextarea(e.target);
             const id = e.target.closest('.task-item').querySelector('input[type="checkbox"]').id.replace('task-checkbox-', '');
-            const index = appState.tasks.findIndex(t => t.id == id);
-            if (index !== -1) handleCoreTaskChange(index, 'text', e.target.value);
+            handleCoreTaskChange(id, 'text', e.target.value);
         }
     });
     domElements.taskListDivEl.addEventListener('blur', (e) => {
         if (e.target.tagName === 'TEXTAREA' && e.target.parentElement.classList.contains('task-item-content')) {
-            // State is already updated on input, this is just for saving
-            if (appState.currentUser) syncDataToFirestore();
+            // State is already updated on input, this blur is just for saving
+            if (appState.currentUser) firebaseService.syncDataToFirestore();
             else saveToLocalStorage();
         }
     }, true); // Use capture phase for blur event
@@ -466,11 +488,11 @@ function setupEventListeners() {
     domElements.copyLinkBtnEl.addEventListener('click', () => {
         const shareUrl = window.location.href;
         navigator.clipboard.writeText(shareUrl).then(() => {
-            const o = domElements.copyLinkBtnEl.innerHTML;
+            const originalText = domElements.copyLinkBtnEl.innerHTML;
             domElements.copyLinkBtnEl.innerHTML = '<i class="fas fa-check"></i> 복사 완료!';
             domElements.copyLinkBtnEl.classList.add('copy-success');
             domElements.copyLinkBtnEl.disabled = true;
-            setTimeout(() => { domElements.copyLinkBtnEl.innerHTML = o; domElements.copyLinkBtnEl.classList.remove('copy-success'); domElements.copyLinkBtnEl.disabled = false; }, 1500);
+            setTimeout(() => { domElements.copyLinkBtnEl.innerHTML = originalText; domElements.copyLinkBtnEl.classList.remove('copy-success'); domElements.copyLinkBtnEl.disabled = false; }, 1500);
             announceToScreenReader("링크가 복사되었습니다.");
             showUserFeedback("링크가 복사되었습니다.", 'success');
         }).catch(err => {
@@ -496,7 +518,7 @@ function setupEventListeners() {
     document.addEventListener('keydown', handleDocumentKeydown);
 
     // Initial check for all done message
-    renderTasks();
+    // This is handled by renderTasks via state subscription now
 }
 
 // Function to apply settings from state and render UI
@@ -512,39 +534,21 @@ function applySettingsAndRenderUI(settings, source = 'local') {
     renderHistory();
     updateStatsUI();
     renderStatsVisuals(); // Will check app mode internally
+    displayCurrentDate(); // Ensure current date is always displayed
 }
 
 // Subscribe UI to state changes
 subscribeToStateChanges(newState => {
     console.log("App State Changed. Re-rendering UI where necessary.", newState);
-    // Note: Some UI updates are done proactively in event handlers (e.g., task completion toggle)
-    // This is for ensuring consistency across all UI components and handling remote updates.
 
     // Apply settings changes (theme, mode, task count, share options)
+    // This function also triggers re-renders of task list, additional tasks, history, stats visuals
+    // so explicit calls for these are mostly redundant here unless specific re-renders are needed.
     applySettingsAndRenderUI(newState.settings, 'state_change');
 
-    // Re-render core task list (will also re-evaluate all-done message)
-    renderTasks();
-
-    // Re-render additional task list
-    renderAdditionalTasks();
-
-    // Re-render history list
-    renderHistory();
-
-    // Update stats text
-    updateStatsUI();
-
-    // Update stats visuals (chart, streak, most achieved day)
-    renderStatsVisuals();
-
-    // Update current date
-    displayCurrentDate();
-
     // Sync to cloud if user is logged in and not an initial Firestore load or import
-    // (Initial load and import handled by their respective functions)
     if (newState.currentUser && isInitialFirestoreLoadComplete) {
-        syncDataToFirestore();
+        firebaseService.syncDataToFirestore();
     } else if (newState.currentUser && !navigator.onLine) {
         showUserFeedback("오프라인: 데이터는 네트워크 연결 시 동기화됩니다.", 'info');
     } else if (!newState.currentUser) {
@@ -559,4 +563,3 @@ document.addEventListener('DOMContentLoaded', initializeApp);
 
 // Re-export for easier access in browser console if needed for debugging
 window.appState = appState;
-
