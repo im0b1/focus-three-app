@@ -1,6 +1,6 @@
-// sw.js - v1.22.0-hotfix (PWA Syntax fix)
+// sw.js - v1.22.1-hotfix (PWA Syntax fix)
 
-const CACHE_NAME = 'oneulset-cache-v1.22.0'; // 캐시 이름 업데이트 (버전 반영)
+const CACHE_NAME = 'oneulset-cache-v1.22.1'; // 캐시 이름 업데이트 (버전 반영)
 const urlsToCache = [
   '/',
   '/index.html',
