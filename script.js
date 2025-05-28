@@ -1,6 +1,6 @@
-// script.js - v1.20.0-scope-fix - FULL CODE
+// script.js - v1.21.0-bugfix-history-image - FULL CODE
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded and parsed (v1.20.0)");
+    console.log("DOM fully loaded and parsed (v1.21.0)");
 
     // --- Firebase Configuration ---
     const firebaseConfig = {
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let userHistoryUnsubscribe = null;
     let isInitialFirestoreLoadComplete = false;
 
-    const APP_VERSION_DATA_FORMAT = "1.14.1-content-load-fix-data";
+    const APP_VERSION_DATA_FORMAT = "1.14.1-content-load-fix-data"; // 데이터 구조 버전
 
     // --- Firebase SDK 초기화 ---
     try {
@@ -777,17 +777,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const todayDateStr = getTodayDateString();
 
         if (storedHistory) { try { history = JSON.parse(storedHistory); if (!Array.isArray(history)) history = []; } catch (e) { history = []; showUserFeedback("로컬 기록 데이터 손상. 초기화합니다.", 'warning'); } }
-        if (currentAppMode === 'focus' && storedAdditionalTasks) {
-            try { additionalTasks = JSON.parse(storedAdditionalTasks); if(!Array.isArray(additionalTasks)) additionalTasks = []; } catch (e) { additionalTasks = []; showUserFeedback("로컬 추가 할 일 데이터 손상. 초기화합니다.", 'warning'); }
-        } else { additionalTasks = []; }
 
         let shouldResetTasks = false;
-        if (storedLastDate === todayDateStr && storedTasks) {
-            try { tasks = JSON.parse(storedTasks); if (!Array.isArray(tasks)) shouldResetTasks = true; }
-            catch (e) { shouldResetTasks = true; showUserFeedback("로컬 핵심 할 일 데이터 손상. 초기화합니다.", 'warning'); }
-        } else {
+        let shouldResetAdditionalTasks = false; // New flag for additional tasks reset
+
+        // Date change logic: if it's a new day, process yesterday's data and reset today's
+        if (storedLastDate !== todayDateStr) {
             shouldResetTasks = true;
-            if (storedTasks && storedLastDate) { // 어제 날짜의 기록을 히스토리에 추가
+            shouldResetAdditionalTasks = true; // Clear additional tasks for new day
+
+            if (storedTasks && storedLastDate) { // Add yesterday's core tasks to history
                 try {
                     const yesterdayTasksData = JSON.parse(storedTasks);
                     // 기존 focusModeTaskCountSetting 값을 사용해야 함 (리셋되기 전)
@@ -805,23 +804,58 @@ document.addEventListener('DOMContentLoaded', () => {
                         const allFilled = cleanedRelevantTasks.every(t => t.text.trim() !== "");
                         const allCompleted = cleanedRelevantTasks.every(t => t.completed);
                         const achieved = allFilled && cleanedRelevantTasks.length === yesterdayFocusModeTaskCount && allCompleted && yesterdayFocusModeTaskCount > 0;
+
+                        let yesterdayAdditionalTasks = []; // Collect yesterday's additional tasks
+                        if (storedAdditionalTasks) {
+                            try {
+                                yesterdayAdditionalTasks = JSON.parse(storedAdditionalTasks);
+                                if (!Array.isArray(yesterdayAdditionalTasks)) yesterdayAdditionalTasks = [];
+                            } catch (e) {
+                                console.error("Error parsing yesterday's additional tasks for history", e);
+                                showUserFeedback("어제 추가 할 일 기록 처리 중 오류가 발생했습니다.", 'warning');
+                                yesterdayAdditionalTasks = [];
+                            }
+                        }
+
                         if (!history.some(entry => entry.date === storedLastDate)) { // 이미 기록되지 않은 경우에만 추가
-                            history.unshift({ date: storedLastDate, tasks: cleanedRelevantTasks, achieved: achieved });
+                            history.unshift({
+                                date: storedLastDate,
+                                tasks: cleanedRelevantTasks,
+                                additionalTasks: yesterdayAdditionalTasks, // 추가 할 일도 기록에 포함
+                                achieved: achieved
+                            });
                             if (history.length > 60) history.splice(60); // 최근 60일만 유지
-                            console.log("Added yesterday's tasks to history.");
+                            console.log("Added yesterday's tasks (core + additional) to history.");
                         }
                     }
-                } catch (e) { console.error("Error processing yesterday's tasks for history", e); showUserFeedback("어제 기록 처리 중 오류가 발생했습니다.", 'warning');}
+                } catch (e) { console.error("Error processing yesterday's core tasks for history", e); showUserFeedback("어제 핵심 할 일 기록 처리 중 오류가 발생했습니다.", 'warning');}
             }
             localStorage.setItem('oneulSetFocusTaskCountSettingBeforeReset', focusModeTaskCountSetting.toString()); // 오늘 날짜로 리셋되기 전의 설정 저장
+        } else { // Same day, load existing tasks and additional tasks
+            if (storedTasks) {
+                try { tasks = JSON.parse(storedTasks); if (!Array.isArray(tasks)) shouldResetTasks = true; }
+                catch (e) { shouldResetTasks = true; showUserFeedback("로컬 핵심 할 일 데이터 손상. 초기화합니다.", 'warning'); }
+            } else {
+                shouldResetTasks = true;
+            }
+            // Always load additional tasks if on the same day
+            if (storedAdditionalTasks) {
+                try { additionalTasks = JSON.parse(storedAdditionalTasks); if (!Array.isArray(additionalTasks)) additionalTasks = []; }
+                catch (e) { additionalTasks = []; showUserFeedback("로컬 추가 할 일 데이터 손상. 초기화합니다.", 'warning'); }
+            } else {
+                additionalTasks = []; // If no stored additional tasks, initialize empty
+            }
         }
 
         if (shouldResetTasks) {
             console.log("Tasks should be reset or initialized.");
             initializeTasks();
-            if (currentAppMode === 'focus') additionalTasks = []; // 간편 모드에서는 추가 할 일 없음
-            // saveState('local'); // 로컬 초기화 후 자동 Firestore 저장 방지 (로그인 시 병합 로직에서 처리)
         }
+        if (shouldResetAdditionalTasks) { // Apply reset for additional tasks if it's a new day
+            console.log("Additional tasks should be reset for a new day.");
+            additionalTasks = [];
+        }
+
         // 데이터 무결성: tasks 배열의 길이를 5개로 유지 (혹시 모를 경우를 대비)
         while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
         if (tasks.length > 5) tasks = tasks.slice(0,5);
@@ -1122,15 +1156,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn(`Malformed history entry:`, entry);
                 return; // 손상된 항목은 렌더링하지 않고 건너뜀
             }
-            const entryDiv = document.createElement('div'); entryDiv.classList.add('history-entry'); entryDiv.dataset.achieved = entry.achieved ? "true" : "false"; const dateStrong = document.createElement('strong'); dateStrong.textContent = `${entry.date.replaceAll('-', '.')}. ${entry.achieved ? "🎯" : ""}`; entryDiv.appendChild(dateStrong); const ul = document.createElement('ul');
+            const entryDiv = document.createElement('div');
+            entryDiv.classList.add('history-entry');
+            entryDiv.dataset.achieved = entry.achieved ? "true" : "false";
+
+            const dateStrong = document.createElement('strong');
+            dateStrong.textContent = `${entry.date.replaceAll('-', '.')}. ${entry.achieved ? "🎯" : ""}`;
+            entryDiv.appendChild(dateStrong);
+
+            const ul = document.createElement('ul');
+            // 핵심 할 일
             entry.tasks.forEach(task => {
                 // 데이터 무결성 검사: task 객체에 필수 속성 있는지 확인
                 if(!task || typeof task.text !== 'string' || typeof task.completed !== 'boolean') {
-                    console.warn(`Malformed task in history entry:`, task);
-                    return; // 손상된 할 일은 건너뜀
+                    console.warn(`Malformed core task in history entry:`, task);
+                    return; // 손상된 할 일은 건너뛰기
                 }
-                const li = document.createElement('li'); li.textContent = task.text.length > 50 ? task.text.substring(0, 50) + "..." : task.text; li.title = task.text; if (task.completed) { li.classList.add('completed'); } ul.appendChild(li); });
-            entryDiv.appendChild(ul); historyListDivEl.appendChild(entryDiv);
+                const li = document.createElement('li');
+                li.textContent = `[핵심] ${task.text.length > 50 ? task.text.substring(0, 50) + "..." : task.text}`;
+                li.title = task.text;
+                if (task.completed) { li.classList.add('completed'); }
+                ul.appendChild(li);
+            });
+
+            // 추가 할 일 - NEW
+            if (entry.additionalTasks && Array.isArray(entry.additionalTasks)) {
+                entry.additionalTasks.forEach(task => {
+                    if(!task || typeof task.text !== 'string' || typeof task.completed !== 'boolean') {
+                        console.warn(`Malformed additional task in history entry:`, task);
+                        return; // 손상된 할 일은 건너뛰기
+                    }
+                    const li = document.createElement('li');
+                    li.textContent = `[추가] ${task.text.length > 50 ? task.text.substring(0, 50) + "..." : task.text}`;
+                    li.title = task.text;
+                    if (task.completed) { li.classList.add('completed'); }
+                    ul.appendChild(li);
+                });
+            }
+
+            entryDiv.appendChild(ul);
+            historyListDivEl.appendChild(entryDiv);
         });
     }
     function calculateAchievementRate(days) {
@@ -1266,115 +1331,196 @@ document.addEventListener('DOMContentLoaded', () => {
         if (shareAsImageBtnEl && typeof html2canvas !== 'undefined') {
             shareAsImageBtnEl.addEventListener('click', () => {
                 if (currentAppMode === 'simple') {
-                    showUserFeedback("이미지 공유는 집중 모드에서만 사용 가능합니다.", 'warning'); return;
+                    showUserFeedback("이미지 공유는 집중 모드에서만 사용 가능합니다.", 'warning');
+                    return;
                 }
                 const originalBtnText = shareAsImageBtnEl.innerHTML;
                 shareAsImageBtnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 생성 중...';
                 shareAsImageBtnEl.disabled = true;
+
+                // Create a temporary element for capture
                 const captureArea = document.createElement('div');
                 captureArea.id = 'image-capture-area';
-                captureArea.style.padding = '20px'; captureArea.style.width = '500px';
-                const isDarkMode = document.body.classList.contains('dark-theme');
-                captureArea.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--container-bg-color-dark' : '--container-bg-color-light').trim();
-                captureArea.style.color = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--text-color-primary-dark' : '--text-color-primary-light').trim();
+                // Apply styles to ensure it's rendered correctly by html2canvas
+                captureArea.style.position = 'absolute';
+                captureArea.style.top = '0';
+                captureArea.style.left = '-9999px'; // Position off-screen
+                captureArea.style.zIndex = '-1'; // Ensure it doesn't interfere with user interaction
+                captureArea.style.padding = '20px';
+                captureArea.style.width = '500px'; // Fixed width for consistent image
+                captureArea.style.boxSizing = 'content-box'; // Ensure padding is added to width
+                captureArea.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue(document.body.classList.contains('dark-theme') ? '--container-bg-color-dark' : '--container-bg-color-light').trim();
+                captureArea.style.color = getComputedStyle(document.documentElement).getPropertyValue(document.body.classList.contains('dark-theme') ? '--text-color-primary-dark' : '--text-color-primary-light').trim();
                 captureArea.style.fontFamily = getComputedStyle(document.body).fontFamily;
                 captureArea.style.lineHeight = getComputedStyle(document.body).lineHeight;
+
+                // Add content to captureArea
                 const titleEl = document.createElement('h1'); titleEl.textContent = "오늘셋";
                 titleEl.style.fontSize = '2em'; titleEl.style.fontWeight = '700'; titleEl.style.textAlign = 'center'; titleEl.style.marginBottom = '5px';
+                titleEl.style.color = 'inherit'; // Inherit from captureArea
                 captureArea.appendChild(titleEl);
+
                 const currentDateElForCapture = document.getElementById('current-date');
                 const dateEl = document.createElement('p');
                 if(currentDateElForCapture) dateEl.textContent = currentDateElForCapture.textContent;
                 dateEl.style.fontSize = '0.9em'; dateEl.style.textAlign = 'center'; dateEl.style.marginBottom = '15px';
-                dateEl.style.color = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--text-color-tertiary-dark' : '--text-color-tertiary-light').trim();
+                dateEl.style.color = getComputedStyle(document.documentElement).getPropertyValue(document.body.classList.contains('dark-theme') ? '--text-color-tertiary-dark' : '--text-color-tertiary-light').trim();
                 captureArea.appendChild(dateEl);
+
                 const taskListWrapperOriginal = document.querySelector('.task-list-wrapper');
-                const taskListDivForCapture = document.querySelector('.task-list');
-                if (taskListWrapperOriginal && taskListDivForCapture) {
+                if (taskListWrapperOriginal) {
                     const taskListWrapperClone = taskListWrapperOriginal.cloneNode(true);
+                    // Apply capture styles to the clone
+                    taskListWrapperClone.classList.add('for-capture');
+                    // Remove hidden "all done" message if present
                     const clonedAllDoneMsg = taskListWrapperClone.querySelector('#all-done-message');
                     if (clonedAllDoneMsg && clonedAllDoneMsg.classList.contains('hidden')) clonedAllDoneMsg.remove();
+
                     const clonedTaskList = taskListWrapperClone.querySelector('.task-list');
                     if (clonedTaskList) {
                         const allClonedItems = Array.from(clonedTaskList.children);
                         allClonedItems.forEach((item, index) => {
-                            if (index >= MAX_TASKS_CURRENT_MODE) item.remove();
-                            else {
-                                const originalTaskItem = taskListDivForCapture.children[index];
-                                if (!originalTaskItem) return;
+                            if (index >= MAX_TASKS_CURRENT_MODE) {
+                                item.remove();
+                            } else {
+                                // Find the original task item to get current values (especially memo content)
+                                const originalTaskItem = document.querySelector(`.task-list .task-item:nth-child(${index + 1})`);
+                                if (!originalTaskItem) return; // Should not happen
+
                                 const memoIconClone = item.querySelector('.memo-icon');
                                 const memoContainerClone = item.querySelector('.memo-container');
+
+                                // Handle memos: replace textarea with div for better capture
                                 if (currentAppMode === 'focus' && shareOptions.includeMemos) {
                                     const originalMemoTextarea = originalTaskItem.querySelector('.memo-container textarea');
                                     if (memoContainerClone && originalMemoTextarea && originalMemoTextarea.value.trim() !== "") {
-                                        memoContainerClone.classList.remove('hidden');
-                                        const memoTextareaClone = memoContainerClone.querySelector('textarea');
-                                        if (memoTextareaClone) {
-                                            const memoDiv = document.createElement('div');
-                                            memoDiv.textContent = originalMemoTextarea.value;
-                                            memoDiv.style.whiteSpace = 'pre-wrap'; memoDiv.style.wordBreak = 'break-word';
-                                            memoDiv.style.padding = getComputedStyle(memoTextareaClone).padding;
-                                            memoContainerClone.replaceChild(memoDiv, memoTextareaClone);
-                                        }
+                                        memoContainerClone.classList.remove('hidden'); // Ensure memo container is visible
+                                        // Replace textarea with a div to prevent textarea specific rendering issues
+                                        const memoDiv = document.createElement('div');
+                                        memoDiv.textContent = originalMemoTextarea.value;
+                                        memoDiv.style.whiteSpace = 'pre-wrap';
+                                        memoDiv.style.wordBreak = 'break-word';
+                                        // Inherit styles from memo textarea
+                                        const computedMemoTextareaStyles = getComputedStyle(memoContainerClone.querySelector('textarea'));
+                                        memoDiv.style.padding = computedMemoTextareaStyles.padding;
+                                        memoDiv.style.border = computedMemoTextareaStyles.border;
+                                        memoDiv.style.borderRadius = computedMemoTextareaStyles.borderRadius;
+                                        memoDiv.style.backgroundColor = computedMemoTextareaStyles.backgroundColor;
+                                        memoDiv.style.color = computedMemoTextareaStyles.color;
+                                        memoDiv.style.fontSize = computedMemoTextareaStyles.fontSize;
+                                        memoDiv.style.lineHeight = computedMemoTextareaStyles.lineHeight;
+
+                                        memoContainerClone.innerHTML = ''; // Clear memoContainer
+                                        memoContainerClone.appendChild(memoDiv);
                                     } else {
+                                        // If memo is empty or not included, remove memo elements
                                         if (memoContainerClone) memoContainerClone.remove();
                                         if (memoIconClone) memoIconClone.remove();
                                     }
                                 } else {
+                                    // If not focus mode or not including memos, remove memo elements
                                     if (memoContainerClone) memoContainerClone.remove();
                                     if (memoIconClone) memoIconClone.remove();
+                                }
+
+                                // For the main task textarea, ensure content is set and auto-grown
+                                const clonedTaskTextarea = item.querySelector('.task-item-content textarea');
+                                if (clonedTaskTextarea) {
+                                    const originalTaskTextarea = originalTaskItem.querySelector('.task-item-content textarea');
+                                    if (originalTaskTextarea) {
+                                        clonedTaskTextarea.value = originalTaskTextarea.value;
+                                        clonedTaskTextarea.style.height = "auto";
+                                        clonedTaskTextarea.style.height = (clonedTaskTextarea.scrollHeight) + "px";
+                                        clonedTaskTextarea.style.overflowY = 'hidden';
+                                        // Override input-specific styles that might cause issues in capture
+                                        clonedTaskTextarea.style.background = 'transparent';
+                                        clonedTaskTextarea.style.boxShadow = 'none';
+                                        clonedTaskTextarea.style.border = 'none';
+                                    }
                                 }
                             }
                         });
                     }
-                    taskListWrapperClone.style.marginTop = '0'; captureArea.appendChild(taskListWrapperClone);
+                    taskListWrapperClone.style.marginTop = '0';
+                    captureArea.appendChild(taskListWrapperClone);
                 }
-                const additionalTaskListDivForCapture = document.getElementById('additional-task-list');
+
+                // Add additional tasks if selected and exist
                 if (currentAppMode === 'focus' && shareOptions.includeAdditional && additionalTasks.length > 0) {
                     const additionalTasksSectionOriginal = document.getElementById('additional-tasks-section');
-                    if(additionalTasksSectionOriginal && additionalTaskListDivForCapture){
+                    if(additionalTasksSectionOriginal){
                         const additionalTasksSectionClone = document.createElement('section');
+                        additionalTasksSectionClone.classList.add('for-capture'); // Apply capture styles
                         additionalTasksSectionClone.innerHTML = `<h2><i class="fas fa-stream"></i> 추가 과제</h2>`;
                         const clonedAdditionalList = document.createElement('div');
                         additionalTasks.forEach(task => {
-                            const item = document.createElement('div'); item.style.padding = '5px 0';
-                            item.style.borderBottom = '1px dashed var(--border-color)';
-                            if (task.completed) item.style.textDecoration = 'line-through';
+                            const item = document.createElement('div');
+                            item.style.padding = '5px 0';
+                            // Inherit border-bottom color from CSS variables
+                            item.style.borderBottom = `1px dashed ${getComputedStyle(document.documentElement).getPropertyValue(document.body.classList.contains('dark-theme') ? '--border-color-dark' : '--border-color-light').trim()}`;
+                            if (task.completed) {
+                                item.style.textDecoration = 'line-through';
+                                // Inherit completed text color from CSS variables
+                                item.style.color = getComputedStyle(document.documentElement).getPropertyValue(document.body.classList.contains('dark-theme') ? '--completed-text-color-dark' : '--completed-text-color-light').trim();
+                            } else {
+                                // Inherit regular text color from CSS variables
+                                item.style.color = getComputedStyle(document.documentElement).getPropertyValue(document.body.classList.contains('dark-theme') ? '--text-color-secondary-dark' : '--text-color-secondary-light').trim();
+                            }
                             item.textContent = (task.completed ? '✅ ' : '◻️ ') + task.text;
                             clonedAdditionalList.appendChild(item);
                         });
                         if (clonedAdditionalList.lastChild) clonedAdditionalList.lastChild.style.borderBottom = 'none';
                         additionalTasksSectionClone.appendChild(clonedAdditionalList);
-                        additionalTasksSectionClone.style.marginTop = '20px'; captureArea.appendChild(additionalTasksSectionClone);
+                        additionalTasksSectionClone.style.marginTop = '20px';
+                        // Apply section background and border colors explicitly
+                        additionalTasksSectionClone.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue(document.body.classList.contains('dark-theme') ? '--additional-task-bg-dark' : '--additional-task-bg-light').trim();
+                        additionalTasksSectionClone.style.borderRadius = '8px';
+                        additionalTasksSectionClone.style.border = `1px solid ${getComputedStyle(document.documentElement).getPropertyValue(document.body.classList.contains('dark-theme') ? '--additional-task-border-dark' : '--additional-task-border-light').trim()}`;
+                        additionalTasksSectionClone.style.padding = '15px 20px'; // Apply padding directly
+                        captureArea.appendChild(additionalTasksSectionClone);
                     }
                 }
+
                 const linkEl = document.createElement('p'); linkEl.textContent = 'todayset.vercel.app';
                 linkEl.style.fontSize = '0.8em'; linkEl.style.textAlign = 'center'; linkEl.style.marginTop = '20px';
-                linkEl.style.color = getComputedStyle(document.documentElement).getPropertyValue(isDarkMode ? '--link-color-dark' : '--link-color-light').trim();
+                linkEl.style.color = getComputedStyle(document.documentElement).getPropertyValue(document.body.classList.contains('dark-theme') ? '--link-color-dark' : '--link-color-light').trim();
                 captureArea.appendChild(linkEl);
-                captureArea.style.position = 'absolute'; captureArea.style.left = '-9999px'; document.body.appendChild(captureArea);
-                html2canvas(captureArea, { useCORS: true, scale: window.devicePixelRatio || 1, logging: false, onclone: (clonedDoc) => {
-                    if (!taskListDivForCapture) return;
-                    const clonedTaskTextareas = Array.from(clonedDoc.querySelectorAll('.task-list-wrapper .task-item textarea:not(.memo-container textarea)'));
-                    const originalTaskTextareas = Array.from(taskListDivForCapture.querySelectorAll('.task-item textarea:not(.memo-container textarea)'));
-                    clonedTaskTextareas.forEach((clonedTextarea, i) => {
-                        if (originalTaskTextareas[i]) {
-                            clonedTextarea.value = originalTaskTextareas[i].value;
-                            clonedTextarea.style.height = "auto"; clonedTextarea.style.height = (clonedTextarea.scrollHeight) + "px";
-                            clonedTextarea.style.overflowY = 'hidden';
+
+                document.body.appendChild(captureArea); // Temporarily add to DOM for capture
+
+                html2canvas(captureArea, {
+                    useCORS: true,
+                    scale: window.devicePixelRatio || 1,
+                    logging: false,
+                    backgroundColor: null // Set to null to allow captureArea's background color to show
+                }).then(canvas => {
+                    // Use toBlob for more reliable downloads
+                    canvas.toBlob(function(blob) {
+                        if (blob) {
+                            const downloadLink = document.createElement('a');
+                            const url = URL.createObjectURL(blob);
+                            downloadLink.href = url;
+                            downloadLink.download = `오늘셋_할일_${getTodayDateString()}.png`;
+                            document.body.appendChild(downloadLink);
+                            downloadLink.click(); // Trigger the download
+                            document.body.removeChild(downloadLink);
+                            URL.revokeObjectURL(url); // Clean up the object URL
+                            announceToScreenReader("할 일 목록 이미지가 다운로드되었습니다.");
+                            showUserFeedback("할 일 목록 이미지가 다운로드되었습니다.", 'success');
+                        } else {
+                            showUserFeedback('이미지 생성에 실패했습니다.', 'error');
                         }
-                    });
-                }}).then(canvas => {
-                    const imageURL = canvas.toDataURL('image/png');
-                    const downloadLink = document.createElement('a');
-                    downloadLink.href = imageURL; downloadLink.download = `오늘셋_할일_${getTodayDateString()}.png`;
-                    document.body.appendChild(downloadLink); document.body.removeChild(downloadLink);
-                    announceToScreenReader("할 일 목록 이미지가 다운로드되었습니다.");
-                    showUserFeedback("할 일 목록 이미지가 다운로드되었습니다.", 'success');
-                }).catch(err => { console.error('이미지 생성 실패:', err); showUserFeedback('이미지 생성에 실패했습니다.', 'error');
+                    }, 'image/png'); // Specify MIME type for the blob
+                }).catch(err => {
+                    console.error('이미지 생성 실패:', err);
+                    showUserFeedback('이미지 생성에 실패했습니다.', 'error');
                 }).finally(() => {
-                    if (document.body.contains(captureArea)) document.body.removeChild(captureArea);
-                    shareAsImageBtnEl.innerHTML = originalBtnText; shareAsImageBtnEl.disabled = false;
+                    // Clean up the temporary capture area
+                    if (document.body.contains(captureArea)) {
+                        document.body.removeChild(captureArea);
+                    }
+                    shareAsImageBtnEl.innerHTML = originalBtnText;
+                    shareAsImageBtnEl.disabled = false;
                 });
             });
         }
@@ -1476,7 +1622,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 초기화 실행 ---
     async function initializeApp() {
-        console.log("Initializing app (v1.20.0 - Scope Fix)...");
+        console.log("Initializing app (v1.21.0 - Bugfix History & Image)...");
         if (!document.getElementById('current-date') || !document.querySelector('.task-list') || !document.getElementById('auth-status')) {
             document.body.innerHTML = '<div style="text-align:center;padding:20px;">앱 로딩 오류: 필수 DOM 요소 누락. (DOM_MISSING)</div>'; return;
         }
