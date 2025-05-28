@@ -1,6 +1,6 @@
-// sw.js - v1.22.1-hotfix (PWA Syntax fix)
+// sw.js - v1.22.2-hotfix (PWA Syntax fix)
 
-const CACHE_NAME = 'oneulset-cache-v1.22.1'; // 캐시 이름 업데이트 (버전 반영)
+const CACHE_NAME = 'oneulset-cache-v1.22.2'; // 캐시 이름 업데이트 (버전 반영)
 const urlsToCache = [
   '/',
   '/index.html',
@@ -10,7 +10,6 @@ const urlsToCache = [
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
   '<https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap>',
-  // index.html에서 사용되는 최신 Font Awesome 버전으로 업데이트
   '<https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css>',
   '<https://cdn.jsdelivr.net/npm/chart.js>',
   '<https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js>',
