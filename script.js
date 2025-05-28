@@ -1,6 +1,6 @@
-// script.js - v1.20.0-scope-fix - FULL CODE
+// script.js - v1.22.0-hotfix - FULL CODE
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded and parsed (v1.20.0)");
+    console.log("DOM fully loaded and parsed (v1.22.0-hotfix)");
 
     // --- Firebase Configuration ---
     const firebaseConfig = {
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let userHistoryUnsubscribe = null;
     let isInitialFirestoreLoadComplete = false;
 
-    const APP_VERSION_DATA_FORMAT = "1.14.1-content-load-fix-data";
+    const APP_VERSION_DATA_FORMAT = "1.22.0-data-format"; // 데이터 형식 버전 업데이트
 
     // --- Firebase SDK 초기화 ---
     try {
@@ -263,8 +263,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Firestore: Attempting to sync all data (tasks, additional tasks, history) using batch write.");
         const batch = firestoreDB.batch();
 
-        // tasksData 업데이트
-        batch.set(userDocRef, { tasksData: { items: tasks, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
+        // tasksData 업데이트 (focusTaskCount 포함)
+        batch.set(userDocRef, { tasksData: { items: tasks, focusTaskCount: focusModeTaskCountSetting, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
 
         // additionalTasksData 업데이트
         batch.set(userDocRef, { additionalTasksData: { items: additionalTasks, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true });
@@ -329,19 +329,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (doc.exists && doc.data()?.tasksData?.items) {
                 const remoteTasks = doc.data().tasksData.items;
-                if (JSON.stringify(tasks) !== JSON.stringify(remoteTasks)) {
+                const remoteFocusTaskCount = doc.data().tasksData.focusTaskCount;
+                if (JSON.stringify(tasks) !== JSON.stringify(remoteTasks) || remoteFocusTaskCount !== focusModeTaskCountSetting) {
                     console.log("Firestore: Tasks changed by remote, updating local state and UI.");
                     tasks = remoteTasks;
+                    if (typeof remoteFocusTaskCount === 'number') {
+                        focusModeTaskCountSetting = remoteFocusTaskCount;
+                        localStorage.setItem('oneulSetFocusTaskCountSetting', focusModeTaskCountSetting.toString());
+                    }
                     while (tasks.length < 5) { tasks.push({ id: Date.now() + tasks.length + Math.random(), text: '', completed: false, memo: '' });}
                     if (tasks.length > 5) tasks = tasks.slice(0,5);
                     renderTasks();
+                    applyAppModeUI(currentAppMode, true, 'firestore'); // UI 업데이트를 위해 호출
                     announceToScreenReader("핵심 할 일 목록이 클라우드에서 업데이트되었습니다.");
                     showUserFeedback("핵심 할 일 목록이 클라우드에서 업데이트되었습니다.", 'info');
                 } else {
                     console.log("Firestore: Tasks remote update but no change detected or already synced. Not showing feedback.");
                 }
             } else if (doc.exists && !doc.data()?.tasksData) {
-                console.log("Firestore: tasksData field not found in user document, initializing locally.");
+                console.log("Firestore: tasksData field not found. Initializing tasks locally.");
                 initializeTasks();
                 renderTasks();
             } else {
@@ -437,6 +443,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 데이터 무결성 검사 및 로드
                 if (data.tasksData && Array.isArray(data.tasksData.items)) {
                     tasks = data.tasksData.items;
+                    if (typeof data.tasksData.focusTaskCount === 'number') {
+                        focusModeTaskCountSetting = data.tasksData.focusTaskCount;
+                        localStorage.setItem('oneulSetFocusTaskCountSetting', focusModeTaskCountSetting.toString());
+                    }
                     console.log(`Firestore: Tasks loaded (${tasks.length} items).`);
                     firestoreDataFound = true;
                 } else {
@@ -744,7 +754,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 상태 저장 및 로드 ---
     function saveState(source = 'local') {
-        localStorage.setItem('oneulSetTasks', JSON.stringify(tasks));
+        // tasks와 함께 focusTaskCountSetting도 저장 (버그 수정: 과거 기록 정확성)
+        const tasksToSave = {
+            items: tasks,
+            focusTaskCount: focusModeTaskCountSetting
+        };
+        localStorage.setItem('oneulSetTasks', JSON.stringify(tasksToSave));
         localStorage.setItem('oneulSetAdditionalTasks', JSON.stringify(additionalTasks));
         localStorage.setItem('oneulSetLastDate', getTodayDateString());
         localStorage.setItem('oneulSetHistory', JSON.stringify(history));
@@ -768,32 +783,56 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("saveState: Not logged in. Data only saved to local storage.");
         }
     }
+
     function loadContentDataFromLocalStorage() {
         console.log("Loading content data (tasks, history) from Local Storage.");
-        const storedTasks = localStorage.getItem('oneulSetTasks');
-        const storedAdditionalTasks = localStorage.getItem('oneulSetAdditionalTasks');
+        const storedTasksJson = localStorage.getItem('oneulSetTasks'); // 이제 이 문자열은 { items: [], focusTaskCount: N } 또는 이전 배열 형식
+        const storedAdditionalTasksJson = localStorage.getItem('oneulSetAdditionalTasks');
         const storedLastDate = localStorage.getItem('oneulSetLastDate');
-        const storedHistory = localStorage.getItem('oneulSetHistory');
+        const storedHistoryJson = localStorage.getItem('oneulSetHistory');
         const todayDateStr = getTodayDateString();
 
-        if (storedHistory) { try { history = JSON.parse(storedHistory); if (!Array.isArray(history)) history = []; } catch (e) { history = []; showUserFeedback("로컬 기록 데이터 손상. 초기화합니다.", 'warning'); } }
-        if (currentAppMode === 'focus' && storedAdditionalTasks) {
-            try { additionalTasks = JSON.parse(storedAdditionalTasks); if(!Array.isArray(additionalTasks)) additionalTasks = []; } catch (e) { additionalTasks = []; showUserFeedback("로컬 추가 할 일 데이터 손상. 초기화합니다.", 'warning'); }
+        if (storedHistoryJson) { try { history = JSON.parse(storedHistoryJson); if (!Array.isArray(history)) history = []; } catch (e) { history = []; showUserFeedback("로컬 기록 데이터 손상. 초기화합니다.", 'warning'); } }
+        if (currentAppMode === 'focus' && storedAdditionalTasksJson) {
+            try { additionalTasks = JSON.parse(storedAdditionalTasksJson); if(!Array.isArray(additionalTasks)) additionalTasks = []; } catch (e) { additionalTasks = []; showUserFeedback("로컬 추가 할 일 데이터 손상. 초기화합니다.", 'warning'); }
         } else { additionalTasks = []; }
 
         let shouldResetTasks = false;
-        if (storedLastDate === todayDateStr && storedTasks) {
-            try { tasks = JSON.parse(storedTasks); if (!Array.isArray(tasks)) shouldResetTasks = true; }
+
+        // 오늘 날짜의 할 일이 로컬에 저장되어 있는지 확인
+        if (storedLastDate === todayDateStr && storedTasksJson) {
+            try {
+                const parsedStoredTasks = JSON.parse(storedTasksJson);
+                // 새로운 형식 (객체 {items, focusTaskCount}) 또는 이전 배열 형식 처리
+                if (parsedStoredTasks && Array.isArray(parsedStoredTasks.items)) {
+                    tasks = parsedStoredTasks.items;
+                    // focusTaskCount는 이미 설정 초기 로드 시 반영되므로 여기서 추가 처리 불필요
+                } else if (parsedStoredTasks && Array.isArray(parsedStoredTasks)) { // 이전 형식: tasks가 직접 배열이었음
+                    tasks = parsedStoredTasks;
+                    showUserFeedback("로컬 핵심 할 일 데이터 형식이 업데이트되었습니다.", 'info');
+                } else {
+                    shouldResetTasks = true; // 손상된 데이터
+                }
+                if (!Array.isArray(tasks)) shouldResetTasks = true; // 최종 배열 유효성 검사
+            }
             catch (e) { shouldResetTasks = true; showUserFeedback("로컬 핵심 할 일 데이터 손상. 초기화합니다.", 'warning'); }
         } else {
-            shouldResetTasks = true;
-            if (storedTasks && storedLastDate) { // 어제 날짜의 기록을 히스토리에 추가
+            shouldResetTasks = true; // 날짜가 다르므로 오늘 할 일은 초기화
+
+            if (storedTasksJson && storedLastDate) { // 어제 날짜의 할 일 데이터를 히스토리에 추가
                 try {
-                    const yesterdayTasksData = JSON.parse(storedTasks);
-                    // 기존 focusModeTaskCountSetting 값을 사용해야 함 (리셋되기 전)
-                    const yesterdayFocusModeTaskCount = parseInt(localStorage.getItem('oneulSetFocusTaskCountSettingBeforeReset') || '3', 10);
+                    const parsedStoredTasks = JSON.parse(storedTasksJson);
+                    // 어제 날짜의 tasks 배열 추출 (새 형식/이전 형식 모두 고려)
+                    const yesterdayTasksData = Array.isArray(parsedStoredTasks.items) ? parsedStoredTasks.items :
+                                                (Array.isArray(parsedStoredTasks) ? parsedStoredTasks : []);
+
+                    // 어제 날짜의 focusTaskCount 추출. 없으면 현재 설정값 사용 (가장 합리적인 추측) 또는 기본값 3
+                    const actualYesterdayFocusTaskCount = typeof parsedStoredTasks.focusTaskCount === 'number' ? parsedStoredTasks.focusTaskCount :
+                                                            (parseInt(localStorage.getItem('oneulSetFocusTaskCountSetting') || '3', 10)); // 버그 수정: 어제 설정값 사용
+
                     if (Array.isArray(yesterdayTasksData)) {
-                        const relevantYesterdayTasks = yesterdayTasksData.slice(0, yesterdayFocusModeTaskCount);
+                        const relevantYesterdayTasks = yesterdayTasksData.slice(0, actualYesterdayFocusTaskCount);
+
                         // 데이터 무결성: 할 일 객체에 필수 속성 있는지 확인
                         const cleanedRelevantTasks = relevantYesterdayTasks.map(t => ({
                             id: t?.id || Date.now() + Math.random(), // id가 없으면 새로 생성
@@ -804,16 +843,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         const allFilled = cleanedRelevantTasks.every(t => t.text.trim() !== "");
                         const allCompleted = cleanedRelevantTasks.every(t => t.completed);
-                        const achieved = allFilled && cleanedRelevantTasks.length === yesterdayFocusModeTaskCount && allCompleted && yesterdayFocusModeTaskCount > 0;
+                        const achieved = allFilled && cleanedRelevantTasks.length === actualYesterdayFocusTaskCount && allCompleted && actualYesterdayFocusTaskCount > 0;
                         if (!history.some(entry => entry.date === storedLastDate)) { // 이미 기록되지 않은 경우에만 추가
-                            history.unshift({ date: storedLastDate, tasks: cleanedRelevantTasks, achieved: achieved });
+                            history.unshift({ date: storedLastDate, tasks: cleanedRelevantTasks, achieved: achieved, focusTaskCount: actualYesterdayFocusTaskCount }); // 버그 수정: focusTaskCount도 함께 저장
                             if (history.length > 60) history.splice(60); // 최근 60일만 유지
                             console.log("Added yesterday's tasks to history.");
                         }
                     }
                 } catch (e) { console.error("Error processing yesterday's tasks for history", e); showUserFeedback("어제 기록 처리 중 오류가 발생했습니다.", 'warning');}
             }
-            localStorage.setItem('oneulSetFocusTaskCountSettingBeforeReset', focusModeTaskCountSetting.toString()); // 오늘 날짜로 리셋되기 전의 설정 저장
         }
 
         if (shouldResetTasks) {
@@ -1415,7 +1453,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     reader.onload = (e) => {
                         try {
                             const importedData = JSON.parse(e.target.result);
-                            if (confirm("현재 로컬 데이터를 덮어쓰고 가져온 데이터로 복원하시겠습니까? (클라우드 데이터와는 별개)")) {
+                            // 버그 수정: 클라우드 동기화에 대한 명확한 경고
+                            if (confirm("현재 로컬 데이터를 덮어쓰고 가져온 데이터로 복원하시겠습니까? (로그인 상태인 경우 클라우드 데이터도 덮어쓰여집니다.)")) {
                                 if (importedData.version !== APP_VERSION_DATA_FORMAT && !confirm(`데이터 형식 버전 불일치. 계속하시겠습니까? (가져온 버전: ${importedData.version || '알 수 없음'}, 현재 버전: ${APP_VERSION_DATA_FORMAT})`)) {
                                     importFileInputEl.value = ''; return;
                                 }
@@ -1476,7 +1515,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 초기화 실행 ---
     async function initializeApp() {
-        console.log("Initializing app (v1.20.0 - Scope Fix)...");
+        console.log("Initializing app (v1.22.0-hotfix)...");
         if (!document.getElementById('current-date') || !document.querySelector('.task-list') || !document.getElementById('auth-status')) {
             document.body.innerHTML = '<div style="text-align:center;padding:20px;">앱 로딩 오류: 필수 DOM 요소 누락. (DOM_MISSING)</div>'; return;
         }
