@@ -1,6 +1,6 @@
-// script.js - v1.22.0-hotfix - FULL CODE
+// script.js - v1.22.2-hotfix - FULL CODE
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded and parsed (v1.22.0-hotfix)");
+    console.log("DOM fully loaded and parsed (v1.22.2-hotfix)");
 
     // --- Firebase Configuration ---
     const firebaseConfig = {
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let userHistoryUnsubscribe = null;
     let isInitialFirestoreLoadComplete = false;
 
-    const APP_VERSION_DATA_FORMAT = "1.22.0-data-format"; // 데이터 형식 버전 업데이트
+    const APP_VERSION_DATA_FORMAT = "1.22.2-data-format"; // 데이터 형식 버전 업데이트
 
     // --- Firebase SDK 초기화 ---
     try {
@@ -548,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 모든 리스너 해제
             if (userSettingsUnsubscribe) { userSettingsUnsubscribe(); userSettingsUnsubscribe = null; console.log("Firestore: Unsubscribed from appSettings."); }
             if (userTasksUnsubscribe) { userTasksUnsubscribe(); userTasksUnsubscribe = null; console.log("Firestore: Unsubscribed from tasksData."); }
-            if (userAdditionalTasksUnsubscribe) { userAdditionalTasksUnsubscribe(); userAdditionalTasksUnsubscribe = null; console.log("Firestore: Unsubscribed from additionalTasksData."); }
+            if (userAdditionalTasksUnsubscribe) { userAdditionalTasksUnsubscribe = null; console.log("Firestore: Unsubscribed from additionalTasksData."); }
             if (userHistoryUnsubscribe) { userHistoryUnsubscribe(); userHistoryUnsubscribe = null; console.log("Firestore: Unsubscribed from historyData."); }
             await firebaseAuth.signOut();
             console.log("Auth: User signed out.");
@@ -1515,7 +1515,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 초기화 실행 ---
     async function initializeApp() {
-        console.log("Initializing app (v1.22.0-hotfix)...");
+        console.log("Initializing app (v1.22.2-hotfix)...");
         if (!document.getElementById('current-date') || !document.querySelector('.task-list') || !document.getElementById('auth-status')) {
             document.body.innerHTML = '<div style="text-align:center;padding:20px;">앱 로딩 오류: 필수 DOM 요소 누락. (DOM_MISSING)</div>'; return;
         }
